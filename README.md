@@ -43,7 +43,10 @@
  * Pre-built executable
  
 
-# For installation instructions see [INSTALL.md](https://github.com/maxsupermanhd/FactoCord-3.0/blob/master/INSTALL.md)
+# Documentation
+
+* **Installation:** See [INSTALL.md](INSTALL.md) for step-by-step installation instructions for Debian-based systems
+* **Commands:** See [COMMANDS.md](COMMANDS.md) for comprehensive tutorial covering all 12 Discord commands with examples and test procedures (German / Deutsch)
 
 # Error reporting
 
@@ -60,3 +63,4 @@ For informal conversation join the discord server: https://discord.gg/uNhtRH8
 Special thanks again to thecmdradama for creating the FactoCord2 project. https://github.com/FactoKit/FactoCord-2.0
 
 Special thanks again to FMCore for creating the initial FactoCord project. https://github.com/FactoKit/FactoCord
+
