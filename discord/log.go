@@ -101,7 +101,7 @@ func sendPlayerStateMessage(line, template string) bool {
 	}
 	username := fields[0]
 	message := strings.ReplaceAll(template, "{username}", username)
-	support.Send(Session, message)
+	support.SendMessage(Session, message)
 	return true
 }
 
