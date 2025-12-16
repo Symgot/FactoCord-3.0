@@ -47,7 +47,6 @@
 
 * **Installation:** See [INSTALL.md](INSTALL.md) for step-by-step installation instructions for Debian-based systems
 * **Commands:** See [COMMANDS.md](COMMANDS.md) for comprehensive tutorial covering all 12 Discord commands with examples and test procedures (German / Deutsch)
-* **Compatibility:** See [FACTORIO_COMPATIBILITY.md](FACTORIO_COMPATIBILITY.md) for detailed Factorio API compatibility analysis for versions 1.0.x through 2.0.x (German / Deutsch)
 
 # Error reporting
 
@@ -64,3 +63,4 @@ For informal conversation join the discord server: https://discord.gg/uNhtRH8
 Special thanks again to thecmdradama for creating the FactoCord2 project. https://github.com/FactoKit/FactoCord-2.0
 
 Special thanks again to FMCore for creating the initial FactoCord project. https://github.com/FactoKit/FactoCord
+
