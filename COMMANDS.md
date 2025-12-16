@@ -367,7 +367,7 @@ $config set messages.server_save "**:mango: Game saved!**"
 **Wichtige Hinweise:**
 - Mod-Namen mit Leerzeichen müssen in Anführungszeichen gesetzt werden: `"Squeak Through"`
 - Mehrere Mods können gleichzeitig verarbeitet werden (durch Leerzeichen getrennt)
-- Versionen können mit `==` angegeben werden: `FNEI==0.3.4`
+- Versionen können mit `==` angegeben werden (FactoCord-spezifische Syntax): `FNEI==0.3.4`
 - Mods müssen mit der Factorio-Version kompatibel sein
 
 **Verwendung:**

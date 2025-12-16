@@ -177,21 +177,9 @@ func compareFactorioVersions(modVersion, factorioVersion string) bool {
 }
 ```
 
-**Empfehlung:** Diese Funktion sollte um Factorio 2.0 Kompatibilität erweitert werden:
-```go
-func compareFactorioVersions(modVersion, factorioVersion string) bool {
-    if modVersion == "0.18" {
-        return factorioVersion == "0.18" || factorioVersion == "1.0"
-    }
-    if modVersion == "1.1" && factorioVersion == "2.0" {
-        // Viele 1.1 Mods funktionieren mit 2.0
-        // Aber Warnung sollte angezeigt werden
-    }
-    return modVersion == factorioVersion
-}
-```
+**Hinweis:** Für zukünftige Verbesserungen könnte diese Funktion um erweiterte 2.0-Kompatibilitätsprüfung ergänzt werden, um Benutzer zu warnen, wenn sie 1.1-Mods mit Factorio 2.0 verwenden (viele funktionieren, aber nicht alle). Die aktuelle Implementierung ist jedoch funktional korrekt und verhindert inkompatible Kombinationen.
 
-**Status:** ⚠️ Verbesserung empfohlen aber nicht kritisch
+**Status:** ⚠️ Zukünftige Verbesserung möglich, aber nicht kritisch
 
 ## Zusammenfassung der Kompatibilität
 

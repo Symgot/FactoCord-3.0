@@ -45,9 +45,9 @@
 
 # Documentation
 
-* **Installation:** See [INSTALL.md](INSTALL.md) for installation instructions
-* **Commands:** See [COMMANDS.md](COMMANDS.md) for detailed command documentation and examples (German / Deutsch)
-* **Compatibility:** See [FACTORIO_COMPATIBILITY.md](FACTORIO_COMPATIBILITY.md) for Factorio version compatibility information (German / Deutsch)
+* **Installation:** See [INSTALL.md](INSTALL.md) for step-by-step installation instructions for Debian-based systems
+* **Commands:** See [COMMANDS.md](COMMANDS.md) for comprehensive tutorial covering all 12 Discord commands with examples and test procedures (German / Deutsch)
+* **Compatibility:** See [FACTORIO_COMPATIBILITY.md](FACTORIO_COMPATIBILITY.md) for detailed Factorio API compatibility analysis for versions 1.0.x through 2.0.x (German / Deutsch)
 
 # Error reporting
 
