@@ -207,7 +207,9 @@ func compareFactorioVersions(modVersion, factorioVersion string) bool {
 ## Getestete Versionen
 
 - Factorio 1.1.100 - ✅ Vollständig kompatibel
-- Factorio 2.0.x - ✅ Vollständig kompatibel (API-Review)
+- Factorio 2.0.x - ✅ Vollständig kompatibel (basierend auf API-Dokumentations-Review)
+
+**Hinweis:** Die Kompatibilität mit Factorio 2.0.x wurde durch gründliche Überprüfung der verwendeten APIs gegen die offizielle Factorio Lua API-Dokumentation verifiziert. Alle verwendeten Events, Eigenschaften und Commands sind in der offiziellen 2.0.x API dokumentiert und unverändert.
 
 ## Referenzen
 

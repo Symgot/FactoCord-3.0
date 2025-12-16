@@ -46,8 +46,8 @@
 # Documentation
 
 * **Installation:** See [INSTALL.md](INSTALL.md) for installation instructions
-* **Commands:** See [COMMANDS.md](COMMANDS.md) for detailed command documentation and examples (German)
-* **Compatibility:** See [FACTORIO_COMPATIBILITY.md](FACTORIO_COMPATIBILITY.md) for Factorio version compatibility information
+* **Commands:** See [COMMANDS.md](COMMANDS.md) for detailed command documentation and examples (German / Deutsch)
+* **Compatibility:** See [FACTORIO_COMPATIBILITY.md](FACTORIO_COMPATIBILITY.md) for Factorio version compatibility information (German / Deutsch)
 
 # Error reporting
 

@@ -859,5 +859,5 @@ Viele Bot-Nachrichten können in `config.json` unter `messages` angepasst werden
 ---
 
 **FactoCord Version:** 3.0  
-**Zuletzt aktualisiert:** 2024  
+**Zuletzt aktualisiert:** 16. Dezember 2024  
 **Dokumentation erstellt für:** Factorio 1.1.x / 2.0.x Kompatibilität
