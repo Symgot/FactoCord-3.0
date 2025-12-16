@@ -81,6 +81,30 @@ func ProcessFactorioLogLine(line string) {
 
 var chatStartRegexp = regexp.MustCompile("^\\[(CHAT|JOIN|LEAVE|KICK|BAN|DISCORD|DISCORD-EMBED)]")
 
+var chatHandlers = map[string]func(line string) bool{
+	"JOIN":  handlePlayerJoin,
+	"LEAVE": handlePlayerLeave,
+}
+
+func handlePlayerJoin(line string) bool {
+	return sendPlayerStateMessage(line, support.Config.Messages.PlayerJoin)
+}
+
+func handlePlayerLeave(line string) bool {
+	return sendPlayerStateMessage(line, support.Config.Messages.PlayerLeave)
+}
+
+func sendPlayerStateMessage(line, template string) bool {
+	fields := strings.Fields(line)
+	if len(fields) == 0 || template == "" {
+		return false
+	}
+	username := fields[0]
+	message := strings.ReplaceAll(template, "{username}", username)
+	support.Send(Session, message)
+	return true
+}
+
 func processFactorioChat(line string) {
 	match := chatStartRegexp.FindStringSubmatch(line)
 	if match == nil {
@@ -92,6 +116,11 @@ func processFactorioChat(line string) {
 	line = strings.TrimLeft(line[len(messageType)+2:], " ")
 	if strings.HasPrefix(line, "<server>") {
 		return
+	}
+	if handler, ok := chatHandlers[messageType]; ok {
+		if handler(line) {
+			return
+		}
 	}
 	if messageType == "DISCORD" || messageType == "CHAT" {
 		if strings.Contains(line, "@") {
