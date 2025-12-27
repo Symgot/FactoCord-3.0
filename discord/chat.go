@@ -48,6 +48,9 @@ func Init() {
 
 	go CacheUpdater(Session)
 
+	// Initialize player watcher
+	InitPlayerWatcher(Session)
+
 	time.Sleep(3 * time.Second)
 	err := Session.UpdateGameStatus(0, support.Config.GameName)
 	support.Panik(err, "... when updating bot status")
@@ -73,6 +76,17 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if m.Author.ID == s.State.User.ID {
 		return
 	}
+
+	// Handle player watcher source channel messages (allow bot messages here)
+	if HandlePlayerWatcherMessage(s, m) {
+		return
+	}
+
+	// Handle !player command in any channel (ignore bots)
+	if !m.Author.Bot && HandlePlayerCommand(s, m) {
+		return
+	}
+
 	if m.ChannelID == support.Config.FactorioChannelID {
 		support.MyLastMessage = false
 		if strings.HasPrefix(m.Content, support.Config.Prefix) {

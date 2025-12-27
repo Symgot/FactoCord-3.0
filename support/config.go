@@ -33,6 +33,10 @@ type configT struct {
 	EnableConsoleChannel  bool   `json:"enable_console_channel"`
 	FactorioConsoleChatID string `json:"factorio_console_chat_id"`
 
+	// Player Watcher: forwards JOIN/LEAVE events from source to target channel
+	PlayerWatcherSourceChannelID string `json:"player_watcher_source_channel_id"`
+	PlayerWatcherTargetChannelID string `json:"player_watcher_target_channel_id"`
+
 	AdminIDs     []string          `json:"admin_ids"`
 	CommandRoles map[string]string `json:"command_roles"`
 
