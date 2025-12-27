@@ -2,7 +2,6 @@ package discord
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -22,37 +21,6 @@ var ActivePlayers = struct {
 	sync.RWMutex
 	players map[string]*PlayerInfo
 }{players: make(map[string]*PlayerInfo)}
-
-// Regex to parse log lines like: "2025-12-25 15:23:32 [JOIN] HKWN1997 joined the game"
-var playerLogRegexp = regexp.MustCompile(`^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \[(JOIN|LEAVE)\] (\S+) (joined|left) the game$`)
-
-// ParsedLogLine represents a parsed player log entry
-type ParsedLogLine struct {
-	Timestamp time.Time
-	Type      string // "JOIN" or "LEAVE"
-	Name      string
-}
-
-// parsePlayerLogLine parses a log line and returns structured data
-func parsePlayerLogLine(content string) *ParsedLogLine {
-	content = strings.TrimSpace(content)
-	matches := playerLogRegexp.FindStringSubmatch(content)
-	if matches == nil {
-		return nil
-	}
-
-	// Parse timestamp (format: "2025-12-25 15:23:32")
-	timestamp, err := time.Parse("2006-01-02 15:04:05", matches[1])
-	if err != nil {
-		timestamp = time.Now()
-	}
-
-	return &ParsedLogLine{
-		Timestamp: timestamp,
-		Type:      matches[2],
-		Name:      matches[3],
-	}
-}
 
 // formatDuration formats a duration in a human-readable format (e.g., "2h 30m 15s")
 func formatDuration(d time.Duration) string {
@@ -75,49 +43,69 @@ func formatDuration(d time.Duration) string {
 
 // InitPlayerWatcher sends a startup message to the target channel
 func InitPlayerWatcher(s *discordgo.Session) {
+	fmt.Println("Player Watcher is now running.")
 	if support.Config.PlayerWatcherTargetChannelID == "" {
+		fmt.Println("  Warning: PlayerWatcherTargetChannelID not configured")
 		return
 	}
 	support.SendTo(s, "Bot wurde gestartet und bereit!", support.Config.PlayerWatcherTargetChannelID)
 }
 
-// HandlePlayerWatcherMessage processes messages from the source channel
+// ProcessPlayerJoin handles a player joining the server (called from log.go)
+func ProcessPlayerJoin(playerName string) {
+	fmt.Printf("Player Watcher: %s joined\n", playerName)
+
+	ActivePlayers.Lock()
+	ActivePlayers.players[playerName] = &PlayerInfo{JoinTime: time.Now()}
+	ActivePlayers.Unlock()
+
+	if support.Config.PlayerWatcherTargetChannelID == "" {
+		return
+	}
+	message := fmt.Sprintf("**Join:**\n%s hat sich eingeloggt auf dem Server", playerName)
+	support.SendTo(Session, message, support.Config.PlayerWatcherTargetChannelID)
+}
+
+// ProcessPlayerLeave handles a player leaving the server (called from log.go)
+func ProcessPlayerLeave(playerName string) {
+	fmt.Printf("Player Watcher: %s left\n", playerName)
+
+	var playTime string
+	ActivePlayers.Lock()
+	if info, exists := ActivePlayers.players[playerName]; exists {
+		playTime = formatDuration(time.Since(info.JoinTime))
+		delete(ActivePlayers.players, playerName)
+	}
+	ActivePlayers.Unlock()
+
+	if support.Config.PlayerWatcherTargetChannelID == "" {
+		return
+	}
+
+	var message string
+	if playTime != "" {
+		message = fmt.Sprintf("**Leave:**\n%s hat sich ausgeloggt aus dem Server (Spielzeit: %s)", playerName, playTime)
+	} else {
+		message = fmt.Sprintf("**Leave:**\n%s hat sich ausgeloggt aus dem Server", playerName)
+	}
+	support.SendTo(Session, message, support.Config.PlayerWatcherTargetChannelID)
+}
+
+// ProcessServerInGame handles the server entering InGame state
+func ProcessServerInGame() {
+	fmt.Println("Player Watcher: Server is now InGame")
+
+	if support.Config.PlayerWatcherTargetChannelID == "" {
+		return
+	}
+	support.SendTo(Session, "**Server Status:**\nServer ist jetzt im Spiel und bereit für Spieler!", support.Config.PlayerWatcherTargetChannelID)
+}
+
+// HandlePlayerWatcherMessage processes messages from the source channel (legacy, kept for compatibility)
 // Returns true if the message was handled
 func HandlePlayerWatcherMessage(s *discordgo.Session, m *discordgo.MessageCreate) bool {
-	// Check if player watcher is configured
-	if support.Config.PlayerWatcherSourceChannelID == "" || support.Config.PlayerWatcherTargetChannelID == "" {
-		return false
-	}
-
-	// Only handle messages from source channel
-	if m.ChannelID != support.Config.PlayerWatcherSourceChannelID {
-		return false
-	}
-
-	// Parse the log line
-	parsed := parsePlayerLogLine(m.Content)
-	if parsed == nil {
-		return false
-	}
-
-	// Handle JOIN/LEAVE events
-	if parsed.Type == "JOIN" {
-		ActivePlayers.Lock()
-		ActivePlayers.players[parsed.Name] = &PlayerInfo{JoinTime: parsed.Timestamp}
-		ActivePlayers.Unlock()
-
-		message := fmt.Sprintf("Join:\n%s hat sich eingeloggt auf dem Server", parsed.Name)
-		support.SendTo(s, message, support.Config.PlayerWatcherTargetChannelID)
-	} else if parsed.Type == "LEAVE" {
-		ActivePlayers.Lock()
-		delete(ActivePlayers.players, parsed.Name)
-		ActivePlayers.Unlock()
-
-		message := fmt.Sprintf("Leave:\n%s hat sich ausgeloggt aus dem Server", parsed.Name)
-		support.SendTo(s, message, support.Config.PlayerWatcherTargetChannelID)
-	}
-
-	return true
+	// This function is now optional - player tracking is done via ProcessFactorioLogLine
+	return false
 }
 
 // HandlePlayerCommand handles the !player command
@@ -149,7 +137,7 @@ func HandlePlayerCommand(s *discordgo.Session, m *discordgo.MessageCreate) bool 
 	}
 	ActivePlayers.RUnlock()
 
-	reply := fmt.Sprintf("Aktive Spieler: %d\n%s", playerCount, strings.Join(lines, "\n"))
+	reply := fmt.Sprintf("**Aktive Spieler:** %d\n%s", playerCount, strings.Join(lines, "\n"))
 	_, _ = s.ChannelMessageSend(m.ChannelID, reply)
 	return true
 }
