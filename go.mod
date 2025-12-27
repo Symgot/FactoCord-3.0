@@ -1,4 +1,4 @@
-module github.com/Symgot/FactoCord-3.0/v3
+module github.com/maxsupermanhd/FactoCord-3.0/v3
 
 go 1.19
 
