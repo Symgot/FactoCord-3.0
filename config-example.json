@@ -29,6 +29,11 @@
     enable_console_channel: false,
     factorio_console_chat_id: "",
 
+    // Player Watcher: Watch a source channel for JOIN/LEAVE logs and forward to target channel
+    // Also enables the !player command to show online players with playtime
+    player_watcher_source_channel_id: "",
+    player_watcher_target_channel_id: "",
+
     // IDs of the discord users that are allowed to execute any command
     admin_ids: [
         // "123456789",

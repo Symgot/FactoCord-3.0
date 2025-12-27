@@ -45,7 +45,7 @@ type ModJSON struct {
 func (m *ModJSON) sortedInsert(newMod *Mod) bool {
 	for i := 0; i < len(m.Mods); i++ {
 		mod := m.Mods[i]
-		if strings.ToLower(mod.Name) == strings.ToLower(newMod.Name) {
+		if strings.EqualFold(mod.Name, newMod.Name) {
 			return false
 		}
 		if strings.ToLower(mod.Name) > strings.ToLower(newMod.Name) {
@@ -76,7 +76,19 @@ type modDescriptionT struct {
 	version support.SemanticVersionT
 }
 
+// Regex to extract mod name from URLs like https://mods.factorio.com/mod/BetterAquilo or https://mods.factorio.com/mod/FNEI?from=search
+var modUrlRegexp = regexp.MustCompile(`^https?://mods\.factorio\.com/mod/([A-Za-z0-9\-_]+)(?:\?.*)?$`)
+
 func modDescription(s string) (*modDescriptionT, *error) {
+	// Check if s is a URL from mods.factorio.com
+	if match := modUrlRegexp.FindStringSubmatch(s); match != nil {
+		// Extract mod name from URL
+		return &modDescriptionT{
+			name:    match[1],
+			version: support.SemanticVersionT{},
+		}, nil
+	}
+
 	name, version := support.SplitDivide(s, "==")
 	version2, err := support.SemanticVersion(version)
 	if err != nil {

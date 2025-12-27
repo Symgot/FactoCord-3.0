@@ -59,8 +59,8 @@ func SearchForUser(name string) *discordgo.User {
 	support.Panik(err, "... when getting guild")
 
 	for _, member := range guild.Members {
-		if strings.ToLower(member.Nick) == strings.ToLower(name) ||
-			strings.ToLower(member.User.Username) == strings.ToLower(name) {
+		if strings.EqualFold(member.Nick, name) ||
+			strings.EqualFold(member.User.Username, name) {
 			return member.User
 		}
 	}

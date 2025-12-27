@@ -13,8 +13,8 @@ import (
 	"github.com/maxsupermanhd/FactoCord-3.0/v3/support"
 )
 
-var chatRegexp = regexp.MustCompile("^\\d{4}[-/]\\d\\d[-/]\\d\\d \\d\\d:\\d\\d:\\d\\d ")
-var factorioLogRegexp = regexp.MustCompile("^\\d+\\.\\d{3} ")
+var chatRegexp = regexp.MustCompile(`^\d{4}[-/]\d\d[-/]\d\d \d\d:\d\d:\d\d `)
+var factorioLogRegexp = regexp.MustCompile(`^\d+\.\d{3} `)
 var gameidRegexp = regexp.MustCompile("Matching server game `(\\d+)` has been created")
 
 var forwardMessages = []*regexp.Regexp{
@@ -66,6 +66,10 @@ func ProcessFactorioLogLine(line string) {
 		if strings.Contains(line, "Quitting multiplayer connection.") {
 			support.SendMessage(Session, support.Config.Messages.ServerStop)
 		}
+		// Detect server entering InGame state (ServerMultiplayerManager changing to InGame)
+		if strings.Contains(line, "changing state from(CreatingGame) to(InGame)") {
+			ProcessServerInGame()
+		}
 		if match := gameidRegexp.FindStringSubmatch(line); match != nil {
 			support.Factorio.GameID = match[1]
 		}
@@ -79,7 +83,18 @@ func ProcessFactorioLogLine(line string) {
 	}
 }
 
-var chatStartRegexp = regexp.MustCompile("^\\[(CHAT|JOIN|LEAVE|KICK|BAN|DISCORD|DISCORD-EMBED)]")
+var chatStartRegexp = regexp.MustCompile(`^\[(CHAT|JOIN|LEAVE|KICK|BAN|DISCORD|DISCORD-EMBED)]`)
+
+func sendPlayerStateMessage(line, template string) bool {
+	fields := strings.Fields(line)
+	if len(fields) == 0 || template == "" {
+		return false
+	}
+	username := fields[0]
+	message := strings.ReplaceAll(template, "{username}", username)
+	support.SendMessage(Session, message)
+	return true
+}
 
 func processFactorioChat(line string) {
 	match := chatStartRegexp.FindStringSubmatch(line)
@@ -93,7 +108,26 @@ func processFactorioChat(line string) {
 	if strings.HasPrefix(line, "<server>") {
 		return
 	}
-	if messageType == "DISCORD" || messageType == "CHAT" {
+	switch messageType {
+	case "JOIN":
+		// Extract player name and notify Player Watcher
+		fields := strings.Fields(line)
+		if len(fields) > 0 {
+			ProcessPlayerJoin(fields[0])
+		}
+		if sendPlayerStateMessage(line, support.Config.Messages.PlayerJoin) {
+			return
+		}
+	case "LEAVE":
+		// Extract player name and notify Player Watcher
+		fields := strings.Fields(line)
+		if len(fields) > 0 {
+			ProcessPlayerLeave(fields[0])
+		}
+		if sendPlayerStateMessage(line, support.Config.Messages.PlayerLeave) {
+			return
+		}
+	case "DISCORD", "CHAT":
 		if strings.Contains(line, "@") {
 			line = AddMentions(line)
 			if !support.Config.AllowPingingEveryone {
@@ -101,20 +135,26 @@ func processFactorioChat(line string) {
 				line = strings.ReplaceAll(line, "@everyone", "@​everyone")
 			}
 		}
-	}
-	if support.Config.HaveServerEssentials {
-		if messageType == "DISCORD-EMBED" {
+		if messageType == "DISCORD" && support.Config.HaveServerEssentials {
+			support.Send(Session, line)
+			return
+		}
+		if !integrationMessage {
+			support.Send(Session, line)
+		}
+	case "DISCORD-EMBED":
+		if support.Config.HaveServerEssentials {
 			message := new(discordgo.MessageSend)
 			err := json.Unmarshal([]byte(line), message)
 			if err == nil {
 				message.TTS = false
 				support.SendComplex(Session, message)
 			}
-		} else if messageType == "DISCORD" {
+		}
+	default:
+		if !integrationMessage {
 			support.Send(Session, line)
 		}
-	} else if !integrationMessage {
-		support.Send(Session, line)
 	}
 }
 
