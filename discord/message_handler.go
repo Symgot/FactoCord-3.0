@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/maxsupermanhd/FactoCord-3.0/v3/factorio"
+	"github.com/maxsupermanhd/FactoCord-3.0/v3/factoriomod"
 	"github.com/maxsupermanhd/FactoCord-3.0/v3/support"
 )
 
@@ -55,13 +55,13 @@ func HandleModSettingsMessage(s *discordgo.Session, m *discordgo.MessageCreate) 
 // handleModListRequest zeigt die verfügbaren Mods an
 func handleModListRequest(s *discordgo.Session, m *discordgo.MessageCreate) {
 	// Lade Mods neu
-	if err := factorio.GlobalModManager.DiscoverMods(); err != nil {
+	if err := factoriomod.GlobalModManager.DiscoverMods(); err != nil {
 		s.ChannelMessageSend(m.ChannelID,
 			"❌ Fehler beim Laden der Mods: "+err.Error())
 		return
 	}
 
-	mods := factorio.GlobalModManager.GetModsWithSettings()
+	mods := factoriomod.GlobalModManager.GetModsWithSettings()
 	if len(mods) == 0 {
 		s.ChannelMessageSend(m.ChannelID,
 			"❌ Keine Mods mit konfigurierbaren Settings gefunden.")

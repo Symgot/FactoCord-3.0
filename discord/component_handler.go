@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/maxsupermanhd/FactoCord-3.0/v3/factorio"
+	"github.com/maxsupermanhd/FactoCord-3.0/v3/factoriomod"
 	"github.com/maxsupermanhd/FactoCord-3.0/v3/models"
 )
 
@@ -97,7 +97,7 @@ func handleModSelection(s *discordgo.Session, i *discordgo.InteractionCreate, cu
 	})
 
 	// Lade Mod
-	mod := factorio.GlobalModManager.GetModByName(modName)
+	mod := factoriomod.GlobalModManager.GetModByName(modName)
 	if mod == nil {
 		updateMessage(s, i.Interaction, "❌ Mod nicht gefunden: "+modName)
 		return
@@ -125,7 +125,7 @@ func handleTabSwitch(s *discordgo.Session, i *discordgo.InteractionCreate, custo
 		Type: discordgo.InteractionResponseDeferredMessageUpdate,
 	})
 
-	mod := factorio.GlobalModManager.GetModByName(modName)
+	mod := factoriomod.GlobalModManager.GetModByName(modName)
 	if mod == nil {
 		updateMessage(s, i.Interaction, "❌ Mod nicht gefunden: "+modName)
 		return
@@ -150,7 +150,7 @@ func handlePageNavigation(s *discordgo.Session, i *discordgo.InteractionCreate, 
 		Type: discordgo.InteractionResponseDeferredMessageUpdate,
 	})
 
-	mod := factorio.GlobalModManager.GetModByName(modName)
+	mod := factoriomod.GlobalModManager.GetModByName(modName)
 	if mod == nil {
 		return
 	}
@@ -164,7 +164,7 @@ func handleBackToModList(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		Type: discordgo.InteractionResponseDeferredMessageUpdate,
 	})
 
-	mods := factorio.GlobalModManager.GetModsWithSettings()
+	mods := factoriomod.GlobalModManager.GetModsWithSettings()
 	displayModListUpdate(s, i.Interaction, mods)
 }
 
@@ -180,7 +180,7 @@ func handleBackToTabs(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		Type: discordgo.InteractionResponseDeferredMessageUpdate,
 	})
 
-	mod := factorio.GlobalModManager.GetModByName(session.ModName)
+	mod := factoriomod.GlobalModManager.GetModByName(session.ModName)
 	if mod == nil {
 		return
 	}
@@ -200,7 +200,7 @@ func handleEditRequest(s *discordgo.Session, i *discordgo.InteractionCreate, cus
 	tabType := parts[2]
 	page, _ := strconv.Atoi(parts[3])
 
-	mod := factorio.GlobalModManager.GetModByName(modName)
+	mod := factoriomod.GlobalModManager.GetModByName(modName)
 	if mod == nil {
 		return
 	}
@@ -230,7 +230,7 @@ func handleSettingInteraction(s *discordgo.Session, i *discordgo.InteractionCrea
 				tabType := parts[2]
 				settingKey := parts[3]
 
-				mod := factorio.GlobalModManager.GetModByName(modName)
+				mod := factoriomod.GlobalModManager.GetModByName(modName)
 				if mod == nil {
 					return
 				}
@@ -267,7 +267,7 @@ func handleModSelectMenu(s *discordgo.Session, i *discordgo.InteractionCreate) {
 			Type: discordgo.InteractionResponseDeferredMessageUpdate,
 		})
 
-		mod := factorio.GlobalModManager.GetModByName(modName)
+		mod := factoriomod.GlobalModManager.GetModByName(modName)
 		if mod == nil {
 			updateMessage(s, i.Interaction, "❌ Mod nicht gefunden: "+modName)
 			return
@@ -286,7 +286,7 @@ func handleBackToMod(s *discordgo.Session, i *discordgo.InteractionCreate, custo
 		Type: discordgo.InteractionResponseDeferredMessageUpdate,
 	})
 
-	mod := factorio.GlobalModManager.GetModByName(modName)
+	mod := factoriomod.GlobalModManager.GetModByName(modName)
 	if mod == nil {
 		return
 	}
@@ -327,7 +327,7 @@ func handleModlistPage(s *discordgo.Session, i *discordgo.InteractionCreate, cus
 		Type: discordgo.InteractionResponseDeferredMessageUpdate,
 	})
 
-	mods := factorio.GlobalModManager.GetModsWithSettings()
+	mods := factoriomod.GlobalModManager.GetModsWithSettings()
 	displayModListPage(s, "", i.Interaction, mods, page)
 }
 
@@ -338,12 +338,12 @@ func handleModlistRefresh(s *discordgo.Session, i *discordgo.InteractionCreate) 
 	})
 
 	// Lade Mods neu
-	if err := factorio.GlobalModManager.DiscoverMods(); err != nil {
+	if err := factoriomod.GlobalModManager.DiscoverMods(); err != nil {
 		updateMessage(s, i.Interaction, "❌ Fehler beim Laden der Mods: "+err.Error())
 		return
 	}
 
-	mods := factorio.GlobalModManager.GetModsWithSettings()
+	mods := factoriomod.GlobalModManager.GetModsWithSettings()
 	displayModListPage(s, "", i.Interaction, mods, 0)
 }
 

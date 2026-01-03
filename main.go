@@ -10,7 +10,7 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/maxsupermanhd/FactoCord-3.0/v3/discord"
-	"github.com/maxsupermanhd/FactoCord-3.0/v3/factorio"
+	"github.com/maxsupermanhd/FactoCord-3.0/v3/factoriomod"
 	"github.com/maxsupermanhd/FactoCord-3.0/v3/support"
 	"github.com/maxsupermanhd/FactoCord-3.0/v3/utils"
 )
@@ -43,8 +43,8 @@ func main() {
 	factorioPath := getFactorioPath()
 
 	// Module initialisieren
-	factorio.InitModManager(factorioPath, "")
-	factorio.InitServerController(factorioPath, "")
+	factoriomod.InitModManager(factorioPath, "")
+	factoriomod.InitServerController(factorioPath, "")
 	discord.InitSessionManager("./temp")
 
 	// Verifikationsdaten laden

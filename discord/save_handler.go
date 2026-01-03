@@ -5,7 +5,7 @@ import (
 	"log"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/maxsupermanhd/FactoCord-3.0/v3/factorio"
+	"github.com/maxsupermanhd/FactoCord-3.0/v3/factoriomod"
 	"github.com/maxsupermanhd/FactoCord-3.0/v3/support"
 )
 
@@ -31,7 +31,7 @@ func handleSaveConfirmation(s *discordgo.Session, i *discordgo.InteractionCreate
 	}
 
 	// Wende Änderungen an
-	writer := factorio.NewSettingsWriter(
+	writer := factoriomod.NewSettingsWriter(
 		support.Config.Executable, // Factorio-Pfad aus Config
 		"./backups",
 	)
@@ -71,9 +71,9 @@ func handleSaveConfirmation(s *discordgo.Session, i *discordgo.InteractionCreate
 	sendRestartAnnouncement(s, userID, session.ModName, session.Changes)
 
 	// Starte Server neu
-	if factorio.GlobalServerController != nil {
+	if factoriomod.GlobalServerController != nil {
 		go func() {
-			if err := factorio.GlobalServerController.RestartServer(); err != nil {
+			if err := factoriomod.GlobalServerController.RestartServer(); err != nil {
 				log.Printf("[ModSettings] Fehler beim Server-Neustart: %v", err)
 			}
 		}()
@@ -161,7 +161,7 @@ func formatChangesList(changes map[string]interface{}) string {
 
 // SaveSettingsDirectly speichert Settings ohne Benutzerinteraktion
 func SaveSettingsDirectly(modName string, changes map[string]interface{}) error {
-	writer := factorio.NewSettingsWriter(
+	writer := factoriomod.NewSettingsWriter(
 		support.Config.Executable,
 		"./backups",
 	)
