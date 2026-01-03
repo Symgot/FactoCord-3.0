@@ -58,6 +58,50 @@ function FactoCordIntegration.SilentExecute(player_name, lua_code)
 	return true, result
 end
 
+-- Check if a player has spy mode enabled for a specific log type
+-- This function can be used by logging mods to check if they should suppress logs
+-- Usage: if FactoCordIntegration.IsSpyModeActive(player_name, "BUILT_ENTITY") then return end
+function FactoCordIntegration.IsSpyModeActive(player_name, log_type)
+	if not storage.factocord_spy_mode then
+		return false
+	end
+	
+	local player_spy = storage.factocord_spy_mode[player_name]
+	if not player_spy then
+		return false
+	end
+	
+	-- Check if "ALL" is in the list or the specific log type
+	for _, suppressed_type in pairs(player_spy) do
+		if suppressed_type == "ALL" or suppressed_type == log_type then
+			return true
+		end
+	end
+	
+	return false
+end
+
+-- Get all players with spy mode active
+function FactoCordIntegration.GetSpyModePlayers()
+	if not storage.factocord_spy_mode then
+		return {}
+	end
+	return storage.factocord_spy_mode
+end
+
+-- Set spy mode for a player (called from Discord bot via silent-command)
+function FactoCordIntegration.SetSpyMode(player_name, log_types)
+	if not storage.factocord_spy_mode then
+		storage.factocord_spy_mode = {}
+	end
+	
+	if log_types == nil or #log_types == 0 then
+		storage.factocord_spy_mode[player_name] = nil
+	else
+		storage.factocord_spy_mode[player_name] = log_types
+	end
+end
+
 script.on_event(defines.events.on_player_joined_game, function(event)
 	local p = game.players[event.player_index];
 	FactoCordIntegration.PrintToDiscord("**" .. p.name .. "** joined.");

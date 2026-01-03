@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"sync"
 
 	"github.com/bwmarrin/discordgo"
 
@@ -15,6 +16,52 @@ import (
 type DMSession struct {
 	UserID   string
 	Username string
+}
+
+// SpyModeData tracks which log types are suppressed for each player
+type SpyModeData struct {
+	SuppressedLogs map[string][]string `json:"suppressed_logs"`
+}
+
+var (
+	spyModeData  SpyModeData
+	spyModeMutex sync.RWMutex
+)
+
+func init() {
+	spyModeData = SpyModeData{
+		SuppressedLogs: make(map[string][]string),
+	}
+}
+
+// Available log types that can be suppressed (from events-logger mod and similar)
+var availableLogTypes = []string{
+	"BUILT_ENTITY",
+	"MINED_ENTITY",
+	"DIED",
+	"PICKED_UP_ITEM",
+	"DROPPED_ITEM",
+	"RESEARCH_STARTED",
+	"RESEARCH_FINISHED",
+	"ROCKET_LAUNCHED",
+	"PLAYER_CRAFTED_ITEM",
+	"PLAYER_CHANGED_POSITION",
+	"PLAYER_CHANGED_SURFACE",
+	"PLAYER_RESPAWNED",
+	"PLAYER_TOGGLED_MAP_EDITOR",
+	"CONSOLE_COMMAND",
+	"CONSOLE_CHAT",
+	"PLAYER_CURSOR_STACK_CHANGED",
+	"PLAYER_MAIN_INVENTORY_CHANGED",
+	"PLAYER_ARMOR_INVENTORY_CHANGED",
+	"PLAYER_AMMO_INVENTORY_CHANGED",
+	"PLAYER_GUN_INVENTORY_CHANGED",
+	"PLAYER_TRASH_INVENTORY_CHANGED",
+	"ENTITY_DAMAGED",
+	"ENTITY_DESTROYED",
+	"CHUNK_GENERATED",
+	"SECTOR_SCANNED",
+	"ALL",
 }
 
 // HandleDMMessage processes messages sent in DMs
@@ -87,6 +134,15 @@ func handleDMCommand(s *discordgo.Session, m *discordgo.MessageCreate, input str
 
 	case "status":
 		handleStatusCommand(s, m)
+		return
+
+	case "spy":
+		// Spy mode - suppress specific logs
+		if !isAdmin {
+			sendDMToChannel(s, m.ChannelID, "❌ Only admins can use spy mode.")
+			return
+		}
+		handleSpyCommand(s, m, args)
 		return
 
 	case "c":
@@ -173,7 +229,7 @@ func handleConfirmCommand(s *discordgo.Session, m *discordgo.MessageCreate, args
 		return
 	}
 
-	sendDMToChannel(s, m.ChannelID, fmt.Sprintf("✅ Successfully verified! Your Discord account is now linked to Factorio player **%s**.\n\nYou can now use:\n• `%sc <command>` - Run commands (visible in game)\n• `%ssc <command>` - Run silent commands (hidden from logs)", factorioUsername, support.Config.Prefix, support.Config.Prefix))
+	sendDMToChannel(s, m.ChannelID, fmt.Sprintf("✅ Successfully verified! Your Discord account is now linked to Factorio player **%s**.\n\nYou can now use:\n• `%sc <command>` - Run commands (visible in game)\n• `%ssc <command>` - Run silent commands (hidden from logs)\n• `%ssc PlayerName.editor` - Run commands on specific players\n• `%sspy` - Manage spy mode (log suppression)", factorioUsername, support.Config.Prefix, support.Config.Prefix, support.Config.Prefix, support.Config.Prefix))
 
 	log.Printf("[DM] User %s (%s) verified as Factorio player %s", m.Author.Username, m.Author.ID, factorioUsername)
 }
@@ -209,7 +265,14 @@ func handleStatusCommand(s *discordgo.Session, m *discordgo.MessageCreate) {
 		serverStatus = "✅ Server online"
 	}
 
-	sendDMToChannel(s, m.ChannelID, fmt.Sprintf("**Your Status:**\n• Admin: %s\n• Verification: %s\n• Server: %s", adminStatus, verifyStatus, serverStatus))
+	// Show spy mode status
+	spyStatus := "❌ Inactive"
+	suppressedLogs := GetSuppressedLogs(m.Author.ID)
+	if len(suppressedLogs) > 0 {
+		spyStatus = fmt.Sprintf("✅ Active - Suppressing: %s", strings.Join(suppressedLogs, ", "))
+	}
+
+	sendDMToChannel(s, m.ChannelID, fmt.Sprintf("**Your Status:**\n• Admin: %s\n• Verification: %s\n• Server: %s\n• Spy Mode: %s", adminStatus, verifyStatus, serverStatus, spyStatus))
 }
 
 // handleOpenCommand runs a Factorio command (visible in chat and logs)
@@ -245,10 +308,11 @@ func handleOpenCommand(s *discordgo.Session, m *discordgo.MessageCreate, args st
 	log.Printf("[DM] Open command from %s: %s", m.Author.Username, command)
 }
 
-// handleSilentCommand runs a Factorio command silently (NOT visible in chat or logs)
-func handleSilentCommand(s *discordgo.Session, m *discordgo.MessageCreate, args string) {
-	if args == "" {
-		sendDMToChannel(s, m.ChannelID, "❌ Usage: `"+support.Config.Prefix+"sc <factorio_command_or_lua_code>`\n\nThis command is **hidden** from Factorio chat and logs.\n\nExamples:\n• `"+support.Config.Prefix+"sc game.print(\"Hello\")` - Run Lua code\n• `"+support.Config.Prefix+"sc game.speed = 2` - Change game speed")
+// handleSpyCommand manages spy mode (log suppression)
+func handleSpyCommand(s *discordgo.Session, m *discordgo.MessageCreate, args string) {
+	factorioUsername, isVerified := GetFactorioUsername(m.Author.ID)
+	if !isVerified {
+		sendDMToChannel(s, m.ChannelID, "❌ You must be verified to use spy mode. Use `"+support.Config.Prefix+"verify <your_factorio_username>` first.")
 		return
 	}
 
@@ -257,16 +321,407 @@ func handleSilentCommand(s *discordgo.Session, m *discordgo.MessageCreate, args 
 		return
 	}
 
+	args = strings.TrimSpace(args)
+	parts := strings.Fields(args)
+
+	if len(parts) == 0 {
+		// Show current spy mode status and available options
+		suppressedLogs := GetSuppressedLogs(m.Author.ID)
+		currentStatus := "None"
+		if len(suppressedLogs) > 0 {
+			currentStatus = strings.Join(suppressedLogs, ", ")
+		}
+
+		sendDMToChannel(s, m.ChannelID, fmt.Sprintf("**🕵️ Spy Mode - Log Suppression**\n\n"+
+			"**Current suppressed logs:** %s\n\n"+
+			"**Usage:**\n"+
+			"• `%sspy add <LOG_TYPE>` - Suppress a log type\n"+
+			"• `%sspy remove <LOG_TYPE>` - Stop suppressing a log type\n"+
+			"• `%sspy clear` - Clear all suppressions\n"+
+			"• `%sspy list` - Show available log types\n"+
+			"• `%sspy on` - Enable spy mode (suppress ALL logs)\n"+
+			"• `%sspy off` - Disable spy mode completely\n\n"+
+			"**Example:** `%sspy add BUILT_ENTITY` - Hide building actions from logs",
+			currentStatus,
+			support.Config.Prefix, support.Config.Prefix, support.Config.Prefix,
+			support.Config.Prefix, support.Config.Prefix, support.Config.Prefix, support.Config.Prefix))
+		return
+	}
+
+	action := strings.ToLower(parts[0])
+
+	switch action {
+	case "list":
+		sendDMToChannel(s, m.ChannelID, "**Available log types to suppress:**\n```\n"+strings.Join(availableLogTypes, "\n")+"```\n\nUse `ALL` to suppress all log types at once.")
+
+	case "add":
+		if len(parts) < 2 {
+			sendDMToChannel(s, m.ChannelID, "❌ Usage: `"+support.Config.Prefix+"spy add <LOG_TYPE>`")
+			return
+		}
+		logType := strings.ToUpper(parts[1])
+		if !isValidLogType(logType) {
+			sendDMToChannel(s, m.ChannelID, "❌ Invalid log type. Use `"+support.Config.Prefix+"spy list` to see available types.")
+			return
+		}
+		AddSuppressedLog(m.Author.ID, logType)
+		activateSpyMode(factorioUsername, m.Author.ID)
+		sendDMToChannel(s, m.ChannelID, fmt.Sprintf("✅ Now suppressing **%s** logs for your player.", logType))
+
+	case "remove":
+		if len(parts) < 2 {
+			sendDMToChannel(s, m.ChannelID, "❌ Usage: `"+support.Config.Prefix+"spy remove <LOG_TYPE>`")
+			return
+		}
+		logType := strings.ToUpper(parts[1])
+		RemoveSuppressedLog(m.Author.ID, logType)
+		activateSpyMode(factorioUsername, m.Author.ID)
+		sendDMToChannel(s, m.ChannelID, fmt.Sprintf("✅ Stopped suppressing **%s** logs.", logType))
+
+	case "clear", "off":
+		ClearSuppressedLogs(m.Author.ID)
+		deactivateSpyMode(factorioUsername)
+		sendDMToChannel(s, m.ChannelID, "✅ Spy mode deactivated. All logs will be visible again.")
+
+	case "on":
+		AddSuppressedLog(m.Author.ID, "ALL")
+		activateSpyMode(factorioUsername, m.Author.ID)
+		sendDMToChannel(s, m.ChannelID, "✅ Spy mode **FULLY ACTIVATED**. All your actions will be hidden from logs.\n\n⚠️ Use `"+support.Config.Prefix+"spy off` to deactivate.")
+
+	default:
+		sendDMToChannel(s, m.ChannelID, "❌ Unknown spy command. Use `"+support.Config.Prefix+"spy` for help.")
+	}
+}
+
+// activateSpyMode sends Lua commands to suppress logs for a player
+func activateSpyMode(factorioUsername string, discordUserID string) {
+	suppressedLogs := GetSuppressedLogs(discordUserID)
+	if len(suppressedLogs) == 0 {
+		return
+	}
+
+	// Create a Lua script that sets up log suppression for this player
+	// This uses global storage to track which players have spy mode enabled
+	luaCode := fmt.Sprintf(`if not storage.factocord_spy_mode then storage.factocord_spy_mode = {} end; storage.factocord_spy_mode["%s"] = {%s}`,
+		escapeFactorioString(factorioUsername), formatLuaStringArray(suppressedLogs))
+
+	support.Factorio.Send("/silent-command " + luaCode)
+}
+
+// deactivateSpyMode removes spy mode for a player
+func deactivateSpyMode(factorioUsername string) {
+	luaCode := fmt.Sprintf(`if storage.factocord_spy_mode then storage.factocord_spy_mode["%s"] = nil end`,
+		escapeFactorioString(factorioUsername))
+
+	support.Factorio.Send("/silent-command " + luaCode)
+}
+
+// formatLuaStringArray formats a string array for Lua
+func formatLuaStringArray(arr []string) string {
+	if len(arr) == 0 {
+		return ""
+	}
+	quoted := make([]string, len(arr))
+	for i, s := range arr {
+		quoted[i] = fmt.Sprintf(`"%s"`, s)
+	}
+	return strings.Join(quoted, ", ")
+}
+
+// isValidLogType checks if a log type is valid
+func isValidLogType(logType string) bool {
+	for _, lt := range availableLogTypes {
+		if lt == logType {
+			return true
+		}
+	}
+	return false
+}
+
+// GetSuppressedLogs returns the suppressed log types for a user
+func GetSuppressedLogs(discordUserID string) []string {
+	spyModeMutex.RLock()
+	defer spyModeMutex.RUnlock()
+	return spyModeData.SuppressedLogs[discordUserID]
+}
+
+// AddSuppressedLog adds a log type to the suppression list
+func AddSuppressedLog(discordUserID, logType string) {
+	spyModeMutex.Lock()
+	defer spyModeMutex.Unlock()
+
+	logs := spyModeData.SuppressedLogs[discordUserID]
+	for _, l := range logs {
+		if l == logType {
+			return // Already exists
+		}
+	}
+	spyModeData.SuppressedLogs[discordUserID] = append(logs, logType)
+}
+
+// RemoveSuppressedLog removes a log type from the suppression list
+func RemoveSuppressedLog(discordUserID, logType string) {
+	spyModeMutex.Lock()
+	defer spyModeMutex.Unlock()
+
+	logs := spyModeData.SuppressedLogs[discordUserID]
+	newLogs := make([]string, 0)
+	for _, l := range logs {
+		if l != logType {
+			newLogs = append(newLogs, l)
+		}
+	}
+	spyModeData.SuppressedLogs[discordUserID] = newLogs
+}
+
+// ClearSuppressedLogs clears all suppressed logs for a user
+func ClearSuppressedLogs(discordUserID string) {
+	spyModeMutex.Lock()
+	defer spyModeMutex.Unlock()
+	delete(spyModeData.SuppressedLogs, discordUserID)
+}
+
+// parsePlayerCommand parses commands in format "player.command" or just "command"
+// Returns: targetPlayer, command, usesPlayerPrefix
+func parsePlayerCommand(args string, defaultPlayer string) (string, string, bool) {
+	// Check if format is "player.command" (e.g., "Shadow.editor")
+	if strings.Contains(args, ".") {
+		parts := strings.SplitN(args, ".", 2)
+		if len(parts) == 2 && parts[0] != "" && parts[1] != "" {
+			// Check if first part looks like a player name (not a Lua object like "game")
+			firstPart := strings.ToLower(parts[0])
+			luaObjects := []string{"game", "script", "remote", "commands", "settings", "rcon", "rendering", "global", "storage", "prototypes", "helpers"}
+			for _, obj := range luaObjects {
+				if firstPart == obj {
+					return defaultPlayer, args, false
+				}
+			}
+			return parts[0], parts[1], true
+		}
+	}
+	return defaultPlayer, args, false
+}
+
+// handleSilentCommand runs a Factorio command silently (NOT visible in chat or logs)
+func handleSilentCommand(s *discordgo.Session, m *discordgo.MessageCreate, args string) {
+	if args == "" {
+		sendDMToChannel(s, m.ChannelID, "❌ Usage: `"+support.Config.Prefix+"sc <command>` or `"+support.Config.Prefix+"sc <player>.<command>`\n\n"+
+			"**Quick Commands:**\n"+
+			"• `editor` - Toggle map editor\n"+
+			"• `cheat` - Toggle cheat mode\n"+
+			"• `spectator` - Toggle spectator mode\n"+
+			"• `god` - Toggle god mode (destroy character)\n"+
+			"• `zoom <value>` - Set zoom level\n"+
+			"• `speed <value>` - Set game speed\n"+
+			"• `teleport <x> <y>` - Teleport to position\n"+
+			"• `give <item> [count]` - Give items\n"+
+			"• `research_all` - Research all technologies\n"+
+			"• `chart_all` - Reveal entire map\n\n"+
+			"**Target another player:**\n"+
+			"• `"+support.Config.Prefix+"sc PlayerName.editor` - Toggle editor for PlayerName\n"+
+			"• `"+support.Config.Prefix+"sc PlayerName.give iron-plate 1000`\n\n"+
+			"**Raw Lua:**\n"+
+			"• `"+support.Config.Prefix+"sc game.speed = 2`")
+		return
+	}
+
+	if !support.Factorio.IsRunning() {
+		sendDMToChannel(s, m.ChannelID, "❌ The Factorio server is not running.")
+		return
+	}
+
+	// Get verified username as default target
+	defaultPlayer, isVerified := GetFactorioUsername(m.Author.ID)
+
+	// Parse player.command format
+	targetPlayer, command, usesPlayerPrefix := parsePlayerCommand(args, defaultPlayer)
+
+	// If using player prefix but not verified, still allow if they specified a player
+	if usesPlayerPrefix && targetPlayer != "" {
+		// Using explicit player target, allow even if not verified
+	} else if !isVerified && needsPlayerContext(command) {
+		sendDMToChannel(s, m.ChannelID, "❌ You must be verified to use player-specific commands. Use `"+support.Config.Prefix+"verify <your_factorio_username>` first.\n\nOr specify a player: `"+support.Config.Prefix+"sc PlayerName."+command+"`")
+		return
+	}
+
+	// Convert command to Lua code
+	luaCode := convertCommandToLua(command, targetPlayer, isVerified || usesPlayerPrefix)
+
 	// Use /silent-command to run Lua code without logging
-	// This ensures the command never appears in Factorio logs or chat
-	command := "/silent-command " + args
+	fullCommand := "/silent-command " + luaCode
 
-	support.Factorio.Send(command)
+	support.Factorio.Send(fullCommand)
 
-	sendDMToChannel(s, m.ChannelID, fmt.Sprintf("✅ Silent command executed: `%s`\n\n🔒 This command was **hidden** from the game chat and logs.", args))
+	// Build response message
+	var responseMsg string
+	if usesPlayerPrefix {
+		responseMsg = fmt.Sprintf("✅ Silent command executed on **%s**: `%s`", targetPlayer, command)
+	} else if isVerified {
+		responseMsg = fmt.Sprintf("✅ Silent command executed as **%s**: `%s`", targetPlayer, command)
+	} else {
+		responseMsg = fmt.Sprintf("✅ Silent command executed: `%s`", args)
+	}
+	responseMsg += "\n\n🔒 This command was **hidden** from the game chat and logs."
+
+	sendDMToChannel(s, m.ChannelID, responseMsg)
 
 	// Note: We intentionally don't log the silent command content to maintain privacy
 	log.Printf("[DM] Silent command from %s (content hidden for privacy)", m.Author.Username)
+}
+
+// needsPlayerContext checks if a command needs a player context
+func needsPlayerContext(command string) bool {
+	parts := strings.Fields(command)
+	if len(parts) == 0 {
+		return false
+	}
+	cmd := strings.ToLower(parts[0])
+	playerCommands := []string{
+		"editor", "cheat", "cheatmode", "spectator", "god", "godmode",
+		"zoom", "teleport", "tp", "give", "insert", "clear_inventory", "clear",
+		"speed_modifier", "reach", "long_reach", "mining_speed", "crafting_speed",
+		"research_all", "chart_all", "reveal_all", "map",
+	}
+	for _, pc := range playerCommands {
+		if cmd == pc {
+			return true
+		}
+	}
+	return false
+}
+
+// convertCommandToLua converts a shorthand command to Lua code
+func convertCommandToLua(command string, targetPlayer string, hasPlayer bool) string {
+	parts := strings.Fields(command)
+	if len(parts) == 0 {
+		return command
+	}
+
+	cmd := strings.ToLower(parts[0])
+	cmdArgs := parts[1:]
+
+	// Helper to get player Lua code
+	playerLua := func() string {
+		if hasPlayer && targetPlayer != "" {
+			return fmt.Sprintf(`game.get_player("%s")`, escapeFactorioString(targetPlayer))
+		}
+		return "game.player"
+	}
+
+	switch cmd {
+	// Player-specific commands
+	case "editor":
+		return fmt.Sprintf(`local p = %s; if p then p.toggle_map_editor() end`, playerLua())
+
+	case "spectator":
+		return fmt.Sprintf(`local p = %s; if p then p.spectator = not p.spectator; p.print("Spectator: " .. tostring(p.spectator)) end`, playerLua())
+
+	case "cheat", "cheatmode", "cheat_mode":
+		return fmt.Sprintf(`local p = %s; if p then p.cheat_mode = not p.cheat_mode; p.print("Cheat mode: " .. tostring(p.cheat_mode)) end`, playerLua())
+
+	case "god", "godmode":
+		return fmt.Sprintf(`local p = %s; if p then if p.character then p.character.destroy(); p.print("God mode enabled") else p.create_character(); p.print("God mode disabled") end end`, playerLua())
+
+	case "zoom":
+		if len(cmdArgs) > 0 {
+			return fmt.Sprintf(`local p = %s; if p then p.zoom = %s end`, playerLua(), cmdArgs[0])
+		}
+		return fmt.Sprintf(`local p = %s; if p then p.print("Current zoom: " .. p.zoom) end`, playerLua())
+
+	case "teleport", "tp":
+		if len(cmdArgs) >= 2 {
+			return fmt.Sprintf(`local p = %s; if p then p.teleport({%s, %s}) end`, playerLua(), cmdArgs[0], cmdArgs[1])
+		} else if len(cmdArgs) == 1 {
+			// Teleport to another player
+			return fmt.Sprintf(`local p = %s; local t = game.get_player("%s"); if p and t then p.teleport(t.position, t.surface) end`, playerLua(), escapeFactorioString(cmdArgs[0]))
+		}
+		return command
+
+	case "give", "insert":
+		if len(cmdArgs) > 0 {
+			itemName := cmdArgs[0]
+			count := "1"
+			if len(cmdArgs) > 1 {
+				count = cmdArgs[1]
+			}
+			return fmt.Sprintf(`local p = %s; if p then p.insert{name="%s", count=%s} end`, playerLua(), escapeFactorioString(itemName), count)
+		}
+		return command
+
+	case "clear_inventory", "clear":
+		return fmt.Sprintf(`local p = %s; if p then p.clear_items_inside() end`, playerLua())
+
+	case "reach", "long_reach":
+		reach := "1000"
+		if len(cmdArgs) > 0 {
+			reach = cmdArgs[0]
+		}
+		return fmt.Sprintf(`local p = %s; if p then p.character_build_distance_bonus = %s; p.character_reach_distance_bonus = %s end`, playerLua(), reach, reach)
+
+	case "mining_speed":
+		speed := "1000"
+		if len(cmdArgs) > 0 {
+			speed = cmdArgs[0]
+		}
+		return fmt.Sprintf(`local p = %s; if p then p.force.manual_mining_speed_modifier = %s end`, playerLua(), speed)
+
+	case "crafting_speed":
+		speed := "1000"
+		if len(cmdArgs) > 0 {
+			speed = cmdArgs[0]
+		}
+		return fmt.Sprintf(`local p = %s; if p then p.force.manual_crafting_speed_modifier = %s end`, playerLua(), speed)
+
+	// Game-wide commands (no player needed)
+	case "speed", "game_speed":
+		if len(cmdArgs) > 0 {
+			return fmt.Sprintf(`game.speed = %s`, cmdArgs[0])
+		}
+		return `game.print("Current speed: " .. game.speed)`
+
+	case "research_all":
+		return fmt.Sprintf(`local p = %s; if p then p.force.research_all_technologies() end`, playerLua())
+
+	case "chart_all", "reveal_all", "map":
+		return fmt.Sprintf(`local p = %s; if p then p.force.chart_all() end`, playerLua())
+
+	case "always_day", "day":
+		return fmt.Sprintf(`local p = %s; if p then p.surface.always_day = true end`, playerLua())
+
+	case "night":
+		return fmt.Sprintf(`local p = %s; if p then p.surface.always_day = false end`, playerLua())
+
+	case "freeze_time":
+		return fmt.Sprintf(`local p = %s; if p then p.surface.freeze_daytime = not p.surface.freeze_daytime end`, playerLua())
+
+	case "peaceful":
+		return fmt.Sprintf(`local p = %s; if p then p.surface.peaceful_mode = not p.surface.peaceful_mode; p.print("Peaceful mode: " .. tostring(p.surface.peaceful_mode)) end`, playerLua())
+
+	case "evolution":
+		if len(cmdArgs) > 0 {
+			return fmt.Sprintf(`local p = %s; if p then game.forces["enemy"].set_evolution_factor(%s, p.surface) end`, playerLua(), cmdArgs[0])
+		}
+		return fmt.Sprintf(`local p = %s; if p then p.print("Evolution: " .. game.forces["enemy"].get_evolution_factor(p.surface)) end`, playerLua())
+
+	case "kill_enemies", "kill_biters":
+		return fmt.Sprintf(`local p = %s; if p then for _, e in pairs(p.surface.find_entities_filtered{force="enemy"}) do e.destroy() end end`, playerLua())
+
+	case "pollution", "clear_pollution":
+		return fmt.Sprintf(`local p = %s; if p then p.surface.clear_pollution() end`, playerLua())
+
+	case "time":
+		return `game.print("Map age: " .. game.tick .. " ticks (" .. math.floor(game.tick/60/60/60) .. " hours)")`
+
+	case "seed":
+		return fmt.Sprintf(`local p = %s; if p then p.print("Seed: " .. p.surface.map_gen_settings.seed) end`, playerLua())
+
+	case "version":
+		return `game.print("Factorio version: " .. game.active_mods["base"])`
+
+	default:
+		// Return as raw Lua code
+		return command
+	}
 }
 
 // runDMRegularCommand runs a regular bot command from DM context
@@ -305,30 +760,34 @@ func sendDMHelp(s *discordgo.Session, channelID string) {
 		Type:        "rich",
 		Color:       0x7289DA,
 		Title:       "🤖 FactoCord DM Commands",
-		Description: "You can control the Factorio server via Direct Messages.\n\n**Prefix:** `" + support.Config.Prefix + "`",
+		Description: "Control the Factorio server via Direct Messages.\n\n**Prefix:** `" + support.Config.Prefix + "`",
 		Fields: []*discordgo.MessageEmbedField{
 			{
-				Name: "🔐 Verification Commands",
-				Value: fmt.Sprintf("`%sverify <player>` - Start verification with a Factorio player\n`%sconfirm <code>` - Confirm verification code\n`%sunlink` - Remove verification link\n`%sstatus` - Show your current status",
+				Name: "🔐 Verification",
+				Value: fmt.Sprintf("`%sverify <player>` - Link with Factorio player\n`%sconfirm <code>` - Confirm code\n`%sunlink` - Remove link\n`%sstatus` - Show status",
 					support.Config.Prefix, support.Config.Prefix, support.Config.Prefix, support.Config.Prefix),
 			},
 			{
 				Name: "🎮 Console Commands",
-				Value: fmt.Sprintf("`%sc <command>` - Run a command (**visible** in game chat & logs)\n`%ssc <lua_code>` - Run silent Lua command (**hidden** from logs)",
-					support.Config.Prefix, support.Config.Prefix),
+				Value: fmt.Sprintf("`%sc <cmd>` - Run command (**visible**)\n`%ssc <cmd>` - Silent command (**hidden**)\n`%ssc Player.cmd` - Run on specific player",
+					support.Config.Prefix, support.Config.Prefix, support.Config.Prefix),
 			},
 			{
-				Name:  "📋 Regular Commands",
-				Value: "All regular bot commands work here too:\n`server`, `save`, `kick`, `ban`, `unban`, `config`, `mod`, `mods`, `version`, `info`, `online`",
+				Name:  "⚡ Quick Silent Commands",
+				Value: "`editor` `cheat` `spectator` `god`\n`zoom <n>` `speed <n>` `teleport <x> <y>`\n`give <item> [count]` `research_all`\n`chart_all` `kill_enemies` `peaceful`",
 			},
 			{
-				Name: "ℹ️ Examples",
-				Value: fmt.Sprintf("• `%sc /players` - List players (visible)\n• `%ssc game.print(\"Hello\")` - Silent Lua (hidden)\n• `%ssc game.speed = 2` - Change game speed (hidden)\n• `%sverify PlayerName` - Verify with player",
+				Name: "🕵️ Spy Mode",
+				Value: fmt.Sprintf("`%sspy on` - Hide ALL your actions from logs\n`%sspy off` - Show actions again\n`%sspy add <TYPE>` - Hide specific log type\n`%sspy list` - Show available log types",
 					support.Config.Prefix, support.Config.Prefix, support.Config.Prefix, support.Config.Prefix),
+			},
+			{
+				Name:  "📋 Bot Commands",
+				Value: "All regular bot commands work here too:\n`server`, `save`, `kick`, `ban`, `unban`, `config`, `mod`, `mods`, `version`, `info`, `online`",
 			},
 		},
 		Footer: &discordgo.MessageEmbedFooter{
-			Text: "💡 Silent commands (sc) never appear in Factorio logs or chat",
+			Text: "💡 Use $sc Player.editor to toggle editor for any player",
 		},
 	}
 
