@@ -1,0 +1,30 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Go files
+*.go text eol=lf
+
+# Lua files
+*.lua text eol=lf
+
+# JSON files
+*.json text eol=lf
+*.json5 text eol=lf
+
+# Markdown
+*.md text eol=lf
+
+# Shell scripts
+*.sh text eol=lf
+
+# PowerShell
+*.ps1 text eol=crlf
+
+# Batch files
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary files
+*.exe binary
+*.zip binary
+*.tar.gz binary

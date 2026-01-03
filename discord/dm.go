@@ -34,30 +34,20 @@ func init() {
 	}
 }
 
-// Available log types that can be suppressed (from events-logger mod and similar)
+// Available log types that can be suppressed
+// These must match the checks in control.lua
 var availableLogTypes = []string{
-	"BUILT_ENTITY",
-	"MINED_ENTITY",
-	"DIED",
-	"PICKED_UP_ITEM",
-	"DROPPED_ITEM",
-	"RESEARCH_STARTED",
-	"RESEARCH_FINISHED",
-	"ROCKET_LAUNCHED",
-	"PLAYER_CRAFTED_ITEM",
-	"PLAYER_CHANGED_POSITION",
-	"PLAYER_CHANGED_SURFACE",
-	"PLAYER_RESPAWNED",
-	"PLAYER_TOGGLED_MAP_EDITOR",
-	"CONSOLE_COMMAND",
-	"CONSOLE_CHAT",
-	"PLAYER_CURSOR_STACK_CHANGED",
-	"PLAYER_MAIN_INVENTORY_CHANGED",
-	"PLAYER_ARMOR_INVENTORY_CHANGED",
-	"PLAYER_AMMO_INVENTORY_CHANGED",
-	"PLAYER_GUN_INVENTORY_CHANGED",
-	"PLAYER_TRASH_INVENTORY_CHANGED",
-	"ENTITY_DAMAGED",
+	"ALL",          // Suppress all logs
+	"JOIN",         // Player joined server
+	"LEAVE",        // Player left server
+	"CHAT",         // Chat messages
+	"DIED",         // Player death
+	"KICKED",       // Player was kicked
+	"MUTED",        // Player mute/unmute
+	"BUILT_ENTITY", // Entity building (if logging enabled in control.lua)
+	"MINED_ENTITY", // Entity mining (if logging enabled in control.lua)
+	"RESEARCH",     // Research completion (if logging enabled in control.lua)
+	"COMMAND",      // Console commands (if logging enabled in control.lua)
 	"ENTITY_DESTROYED",
 	"CHUNK_GENERATED",
 	"SECTOR_SCANNED",
@@ -145,10 +135,24 @@ func handleDMCommand(s *discordgo.Session, m *discordgo.MessageCreate, input str
 		handleSpyCommand(s, m, args)
 		return
 
+	case "ghost":
+		// Ghost mode - full invisibility
+		if !isAdmin {
+			sendDMToChannel(s, m.ChannelID, "❌ Only admins can use ghost mode.")
+			return
+		}
+		handleGhostCommand(s, m, args)
+		return
+
 	case "c":
 		// Open command (visible in chat and logs)
 		if !isAdmin {
 			sendDMToChannel(s, m.ChannelID, "❌ Only admins can use console commands.")
+			return
+		}
+		// Check for auto-silent commands
+		if IsAutoSilentCommand(m.Author.ID, args) {
+			handleSilentCommand(s, m, args)
 			return
 		}
 		handleOpenCommand(s, m, args)
@@ -782,12 +786,17 @@ func sendDMHelp(s *discordgo.Session, channelID string) {
 					support.Config.Prefix, support.Config.Prefix, support.Config.Prefix, support.Config.Prefix),
 			},
 			{
+				Name: "👻 Ghost Mode",
+				Value: fmt.Sprintf("`%sghost on` - Become completely invisible\n`%sghost off` - Become visible again\n`%sghost prelogin` - Activate on next join\n`%sghost commands` - Auto-silent commands",
+					support.Config.Prefix, support.Config.Prefix, support.Config.Prefix, support.Config.Prefix),
+			},
+			{
 				Name:  "📋 Bot Commands",
 				Value: "All regular bot commands work here too:\n`server`, `save`, `kick`, `ban`, `unban`, `config`, `mod`, `mods`, `version`, `info`, `online`",
 			},
 		},
 		Footer: &discordgo.MessageEmbedFooter{
-			Text: "💡 Use $sc Player.editor to toggle editor for any player",
+			Text: "👻 Ghost Mode: Full invisibility with fake login/logout",
 		},
 	}
 

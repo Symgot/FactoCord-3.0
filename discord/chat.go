@@ -91,12 +91,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
-	// Handle player watcher source channel messages (allow bot messages here)
-	if HandlePlayerWatcherMessage(s, m) {
-		return
-	}
-
-	// Handle !player command in any channel (ignore bots)
+	// Handle player command in any channel (ignore bots)
 	if !m.Author.Bot && HandlePlayerCommand(s, m) {
 		return
 	}

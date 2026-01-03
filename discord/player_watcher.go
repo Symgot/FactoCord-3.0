@@ -8,6 +8,7 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 
+	"github.com/maxsupermanhd/FactoCord-3.0/v3/commands"
 	"github.com/maxsupermanhd/FactoCord-3.0/v3/support"
 )
 
@@ -41,17 +42,17 @@ func formatDuration(d time.Duration) string {
 	return strings.Join(parts, " ")
 }
 
-// InitPlayerWatcher sends a startup message to the target channel
+// InitPlayerWatcher initializes the player watcher
 func InitPlayerWatcher(s *discordgo.Session) {
 	fmt.Println("Player Watcher is now running.")
 	if support.Config.PlayerWatcherTargetChannelID == "" {
 		fmt.Println("  Warning: PlayerWatcherTargetChannelID not configured")
 		return
 	}
-	support.SendTo(s, "Bot wurde gestartet und bereit!", support.Config.PlayerWatcherTargetChannelID)
 }
 
 // ProcessPlayerJoin handles a player joining the server (called from log.go)
+// This is called for normal (non-ghost) players
 func ProcessPlayerJoin(playerName string) {
 	fmt.Printf("Player Watcher: %s joined\n", playerName)
 
@@ -59,14 +60,12 @@ func ProcessPlayerJoin(playerName string) {
 	ActivePlayers.players[playerName] = &PlayerInfo{JoinTime: time.Now()}
 	ActivePlayers.Unlock()
 
-	if support.Config.PlayerWatcherTargetChannelID == "" {
-		return
-	}
-	message := fmt.Sprintf("**Join:**\n%s hat sich eingeloggt auf dem Server", playerName)
-	support.SendTo(Session, message, support.Config.PlayerWatcherTargetChannelID)
+	// Send join message via PlayerWatcher channel
+	SendPlayerWatcherJoin(playerName)
 }
 
 // ProcessPlayerLeave handles a player leaving the server (called from log.go)
+// This is called for normal (non-ghost) players
 func ProcessPlayerLeave(playerName string) {
 	fmt.Printf("Player Watcher: %s left\n", playerName)
 
@@ -78,16 +77,46 @@ func ProcessPlayerLeave(playerName string) {
 	}
 	ActivePlayers.Unlock()
 
+	// Send leave message via PlayerWatcher channel
+	SendPlayerWatcherLeave(playerName, playTime)
+}
+
+// SendPlayerWatcherJoin sends a join message to the PlayerWatcher channel
+func SendPlayerWatcherJoin(playerName string) {
+	if support.Config.PlayerWatcherTargetChannelID == "" {
+		return
+	}
+
+	message := support.Config.Messages.PlayerWatcherJoin
+	if message == "" {
+		message = "**Join:**\n{username} hat sich eingeloggt auf dem Server"
+	}
+	message = strings.ReplaceAll(message, "{username}", playerName)
+
+	support.SendTo(Session, message, support.Config.PlayerWatcherTargetChannelID)
+}
+
+// SendPlayerWatcherLeave sends a leave message to the PlayerWatcher channel
+func SendPlayerWatcherLeave(playerName string, playTime string) {
 	if support.Config.PlayerWatcherTargetChannelID == "" {
 		return
 	}
 
 	var message string
 	if playTime != "" {
-		message = fmt.Sprintf("**Leave:**\n%s hat sich ausgeloggt aus dem Server (Spielzeit: %s)", playerName, playTime)
+		message = support.Config.Messages.PlayerWatcherLeaveTime
+		if message == "" {
+			message = "**Leave:**\n{username} hat sich ausgeloggt aus dem Server (Spielzeit: {playtime})"
+		}
+		message = strings.ReplaceAll(message, "{playtime}", playTime)
 	} else {
-		message = fmt.Sprintf("**Leave:**\n%s hat sich ausgeloggt aus dem Server", playerName)
+		message = support.Config.Messages.PlayerWatcherLeave
+		if message == "" {
+			message = "**Leave:**\n{username} hat sich ausgeloggt aus dem Server"
+		}
 	}
+	message = strings.ReplaceAll(message, "{username}", playerName)
+
 	support.SendTo(Session, message, support.Config.PlayerWatcherTargetChannelID)
 }
 
@@ -101,17 +130,13 @@ func ProcessServerInGame() {
 	support.SendTo(Session, support.Config.Messages.ServerReady, support.Config.PlayerWatcherTargetChannelID)
 }
 
-// HandlePlayerWatcherMessage processes messages from the source channel (legacy, kept for compatibility)
-// Returns true if the message was handled
-func HandlePlayerWatcherMessage(s *discordgo.Session, m *discordgo.MessageCreate) bool {
-	// This function is now optional - player tracking is done via ProcessFactorioLogLine
-	return false
-}
-
-// HandlePlayerCommand handles the !player command
+// HandlePlayerCommand handles the player command (prefix + "player")
 func HandlePlayerCommand(s *discordgo.Session, m *discordgo.MessageCreate) bool {
-	content := strings.TrimSpace(strings.ToLower(m.Content))
-	if !strings.HasPrefix(content, "!player") {
+	content := strings.TrimSpace(m.Content)
+	prefix := support.Config.Prefix
+
+	// Check for player command
+	if !strings.HasPrefix(strings.ToLower(content), strings.ToLower(prefix+"player")) {
 		return false
 	}
 
@@ -120,29 +145,78 @@ func HandlePlayerCommand(s *discordgo.Session, m *discordgo.MessageCreate) bool 
 		return false
 	}
 
+	// Check if admin version requested (player_admin)
+	isAdminRequest := strings.HasPrefix(strings.ToLower(content), strings.ToLower(prefix+"player_admin"))
+	showHiddenPlayers := false
+
+	if isAdminRequest {
+		// Check if user is admin
+		if commands.CheckAdmin(m.Author.ID) {
+			showHiddenPlayers = true
+		}
+	}
+
 	now := time.Now()
 
-	ActivePlayers.RLock()
-	playerCount := len(ActivePlayers.players)
+	var players map[string]time.Time
+	if showHiddenPlayers {
+		// Show ALL players including hidden ones
+		players = GetActivePlayers()
+	} else {
+		// Show only visible players (exclude ghost mode)
+		players = GetVisiblePlayers()
+	}
+
+	playerCount := len(players)
+
 	if playerCount == 0 {
-		ActivePlayers.RUnlock()
-		_, _ = s.ChannelMessageSend(m.ChannelID, "Es sind derzeit keine Spieler online.")
+		emptyMsg := support.Config.Messages.PlayerListEmpty
+		if emptyMsg == "" {
+			emptyMsg = "Es sind derzeit keine Spieler online."
+		}
+		_, _ = s.ChannelMessageSend(m.ChannelID, emptyMsg)
 		return true
 	}
 
 	var lines []string
-	for name, info := range ActivePlayers.players {
-		dur := formatDuration(now.Sub(info.JoinTime))
-		lines = append(lines, fmt.Sprintf("- %s: online seit %s", name, dur))
+	entryTemplate := support.Config.Messages.PlayerListEntry
+	if entryTemplate == "" {
+		entryTemplate = "- {username}: online seit {playtime}"
 	}
-	ActivePlayers.RUnlock()
 
-	reply := fmt.Sprintf("**Aktive Spieler:** %d\n%s", playerCount, strings.Join(lines, "\n"))
+	for name, joinTime := range players {
+		dur := formatDuration(now.Sub(joinTime))
+		entry := strings.ReplaceAll(entryTemplate, "{username}", name)
+		entry = strings.ReplaceAll(entry, "{playtime}", dur)
+
+		// Mark hidden players for admin view
+		if showHiddenPlayers && IsPlayerHidden(name) {
+			entry += " 👻"
+		}
+
+		lines = append(lines, entry)
+	}
+
+	headerTemplate := support.Config.Messages.PlayerListHeader
+	if headerTemplate == "" {
+		headerTemplate = "**Aktive Spieler:** {count}"
+	}
+	header := strings.ReplaceAll(headerTemplate, "{count}", fmt.Sprintf("%d", playerCount))
+
+	if showHiddenPlayers {
+		visibleCount := len(GetVisiblePlayers())
+		hiddenCount := playerCount - visibleCount
+		if hiddenCount > 0 {
+			header += fmt.Sprintf(" (davon %d 👻 versteckt)", hiddenCount)
+		}
+	}
+
+	reply := header + "\n" + strings.Join(lines, "\n")
 	_, _ = s.ChannelMessageSend(m.ChannelID, reply)
 	return true
 }
 
-// GetActivePlayers returns a copy of the active players map
+// GetActivePlayers returns a copy of the active players map (ALL players)
 func GetActivePlayers() map[string]time.Time {
 	ActivePlayers.RLock()
 	defer ActivePlayers.RUnlock()
@@ -154,7 +228,7 @@ func GetActivePlayers() map[string]time.Time {
 	return result
 }
 
-// GetActivePlayerCount returns the number of active players
+// GetActivePlayerCount returns the number of active players (ALL players)
 func GetActivePlayerCount() int {
 	ActivePlayers.RLock()
 	defer ActivePlayers.RUnlock()

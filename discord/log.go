@@ -31,12 +31,20 @@ func ProcessFactorioLogLine(line string) {
 		return
 	}
 
+	// Check if any ghost mode player should have their logs suppressed
+	if ShouldSuppressLog(line) {
+		return // Don't forward this log at all
+	}
+
 	if support.Config.EnableConsoleChannel && support.Config.FactorioConsoleChatID != "" {
 		if consoleChannel == nil {
 			consoleChannel = make(chan string, 10)
 			go forwardToConsoleChannel(Session, consoleChannel)
 		}
-		consoleChannel <- line
+		// Check again before forwarding to console channel
+		if !ShouldSuppressLog(line) {
+			consoleChannel <- line
+		}
 	}
 
 	if chatRegexp.FindString(line) != "" {
@@ -110,24 +118,54 @@ func processFactorioChat(line string) {
 	}
 	switch messageType {
 	case "JOIN":
-		// Extract player name and notify Player Watcher
+		// Extract player name and check ghost mode
 		fields := strings.Fields(line)
 		if len(fields) > 0 {
-			ProcessPlayerJoin(fields[0])
+			playerName := fields[0]
+
+			// Check if this player has pre-login ghost mode
+			if OnPlayerLogin(playerName) {
+				// Player has ghost mode pre-login enabled
+				// Don't show join message, don't add to visible players
+				fmt.Printf("Player Watcher: %s joined (GHOST MODE - hidden)\n", playerName)
+				return
+			}
+
+			// Check if player is in ghost mode (shouldn't happen for JOIN, but safety check)
+			if IsPlayerHidden(playerName) {
+				return
+			}
+
+			// ProcessPlayerJoin handles both tracking AND sending notification via PlayerWatcher
+			ProcessPlayerJoin(playerName)
 		}
-		if sendPlayerStateMessage(line, support.Config.Messages.PlayerJoin) {
-			return
-		}
+		// Don't send player_join message here - it's handled by PlayerWatcher
+		return
+
 	case "LEAVE":
-		// Extract player name and notify Player Watcher
+		// Extract player name and check ghost mode
 		fields := strings.Fields(line)
 		if len(fields) > 0 {
-			ProcessPlayerLeave(fields[0])
+			playerName := fields[0]
+
+			// Check if player is in ghost mode - if so, don't show leave
+			if IsPlayerHidden(playerName) {
+				fmt.Printf("Player Watcher: %s left (GHOST MODE - hidden)\n", playerName)
+				// Clean up ghost mode data
+				SetPlayerHidden(playerName, false)
+				return
+			}
+
+			// ProcessPlayerLeave handles both tracking AND sending notification via PlayerWatcher
+			ProcessPlayerLeave(playerName)
 		}
-		if sendPlayerStateMessage(line, support.Config.Messages.PlayerLeave) {
+		// Don't send player_leave message here - it's handled by PlayerWatcher
+		return
+	case "DISCORD", "CHAT":
+		// Check if the message is from a hidden player
+		if ShouldSuppressLog(line) {
 			return
 		}
-	case "DISCORD", "CHAT":
 		if strings.Contains(line, "@") {
 			line = AddMentions(line)
 			if !support.Config.AllowPingingEveryone {

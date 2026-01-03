@@ -33,8 +33,7 @@ type configT struct {
 	EnableConsoleChannel  bool   `json:"enable_console_channel"`
 	FactorioConsoleChatID string `json:"factorio_console_chat_id"`
 
-	// Player Watcher: forwards JOIN/LEAVE events from source to target channel
-	PlayerWatcherSourceChannelID string `json:"player_watcher_source_channel_id"`
+	// Player Watcher: Target channel for JOIN/LEAVE notifications
 	PlayerWatcherTargetChannelID string `json:"player_watcher_target_channel_id"`
 
 	// DM Chat: Enable direct message communication with admins
@@ -59,11 +58,19 @@ type configT struct {
 		ServerReady       string `json:"server_ready"`
 		PlayerJoin        string `json:"player_join"`
 		PlayerLeave       string `json:"player_leave"`
+		PlayerLeaveTime   string `json:"player_leave_time"`
 		DownloadStart     string `json:"download_start"`
 		DownloadProgress  string `json:"download_progress"`
 		DownloadComplete  string `json:"download_complete"`
 		Unpacking         string `json:"unpacking"`
 		UnpackingComplete string `json:"unpacking_complete"`
+		// Player Watcher specific messages
+		PlayerWatcherJoin      string `json:"player_watcher_join"`
+		PlayerWatcherLeave     string `json:"player_watcher_leave"`
+		PlayerWatcherLeaveTime string `json:"player_watcher_leave_time"`
+		PlayerListHeader       string `json:"player_list_header"`
+		PlayerListEntry        string `json:"player_list_entry"`
+		PlayerListEmpty        string `json:"player_list_empty"`
 	} `json:"messages"`
 }
 
@@ -121,10 +128,18 @@ func (conf *configT) defaults() {
 	conf.Messages.ServerSave = "**:floppy_disk: Game saved!**"
 	conf.Messages.ServerReady = "**:green_circle: Server is ready for players!**"
 	conf.Messages.PlayerJoin = "**:arrow_up: {username}**"
-	conf.Messages.PlayerLeave = "**:arrow_down: {username}s**"
+	conf.Messages.PlayerLeave = "**:arrow_down: {username}**"
+	conf.Messages.PlayerLeaveTime = "**:arrow_down: {username}** (Spielzeit: {playtime})"
 	conf.Messages.DownloadStart = ":arrow_down: Downloading {file}..."
 	conf.Messages.DownloadProgress = ":arrow_down: Downloading {file}: {percent}%"
 	conf.Messages.DownloadComplete = ":white_check_mark: Downloaded {file}"
 	conf.Messages.Unpacking = ":pinching_hand: Unpacking {file}..."
 	conf.Messages.UnpackingComplete = ":ok_hand: Server updated to {version}"
+	// Player Watcher defaults
+	conf.Messages.PlayerWatcherJoin = "**Join:**\n{username} hat sich eingeloggt auf dem Server"
+	conf.Messages.PlayerWatcherLeave = "**Leave:**\n{username} hat sich ausgeloggt aus dem Server"
+	conf.Messages.PlayerWatcherLeaveTime = "**Leave:**\n{username} hat sich ausgeloggt aus dem Server (Spielzeit: {playtime})"
+	conf.Messages.PlayerListHeader = "**Aktive Spieler:** {count}"
+	conf.Messages.PlayerListEntry = "- {username}: online seit {playtime}"
+	conf.Messages.PlayerListEmpty = "Es sind derzeit keine Spieler online."
 }

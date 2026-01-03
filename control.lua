@@ -104,7 +104,10 @@ end
 
 script.on_event(defines.events.on_player_joined_game, function(event)
 	local p = game.players[event.player_index];
-	FactoCordIntegration.PrintToDiscord("**" .. p.name .. "** joined.");
+	-- Spy mode check for JOIN events
+	if not FactoCordIntegration.IsSpyModeActive(p.name, "JOIN") then
+		FactoCordIntegration.PrintToDiscord("**" .. p.name .. "** joined.");
+	end
 	if(p.admin == true) then
 		p.print("Welcome admin " .. p.name .. " to server!");
 	else
@@ -114,7 +117,10 @@ end)
 
 script.on_event(defines.events.on_player_left_game, function(event)
 	local p = game.players[event.player_index];
-	FactoCordIntegration.PrintToDiscord("**" .. p.name .. "** left.");
+	-- Spy mode check for LEAVE events
+	if not FactoCordIntegration.IsSpyModeActive(p.name, "LEAVE") then
+		FactoCordIntegration.PrintToDiscord("**" .. p.name .. "** left.");
+	end
 end)
 
 script.on_event({defines.events.on_console_chat},
@@ -122,25 +128,117 @@ script.on_event({defines.events.on_console_chat},
 		if not e.player_index then
 			return
 		end
-		if game.players[e.player_index].tag == "" then
-			if game.players[e.player_index].admin then
-				FactoCordIntegration.PrintToDiscord('(Admin) <' .. game.players[e.player_index].name .. '> ' .. e.message)
+		local player = game.players[e.player_index]
+		-- Spy mode check for CHAT events
+		if FactoCordIntegration.IsSpyModeActive(player.name, "CHAT") then
+			return
+		end
+		if player.tag == "" then
+			if player.admin then
+				FactoCordIntegration.PrintToDiscord('(Admin) <' .. player.name .. '> ' .. e.message)
 			else
-				FactoCordIntegration.PrintToDiscord('<' .. game.players[e.player_index].name .. '> ' .. e.message)
+				FactoCordIntegration.PrintToDiscord('<' .. player.name .. '> ' .. e.message)
 			end
 		else
-			if game.players[e.player_index].admin then
-				FactoCordIntegration.PrintToDiscord('(Admin) <' .. game.players[e.player_index].name .. '> ' .. game.players[e.player_index].tag .. " " .. e.message)
+			if player.admin then
+				FactoCordIntegration.PrintToDiscord('(Admin) <' .. player.name .. '> ' .. player.tag .. " " .. e.message)
 			else
-				FactoCordIntegration.PrintToDiscord('<' .. game.players[e.player_index].name .. '> ' .. game.players[e.player_index].tag .. " " .. e.message)
+				FactoCordIntegration.PrintToDiscord('<' .. player.name .. '> ' .. player.tag .. " " .. e.message)
 			end
 		end
 	end
 )
 
+-- ============================================================
+-- SPY MODE: Additional event handlers for entity tracking
+-- These events are only logged to Discord if NOT suppressed by spy mode
+-- ============================================================
+
+-- Track entity building (machines, belts, etc.)
+script.on_event(defines.events.on_built_entity, function(event)
+	local player = game.players[event.player_index]
+	if not player then return end
+	
+	-- Check spy mode for this player
+	if FactoCordIntegration.IsSpyModeActive(player.name, "BUILT_ENTITY") then
+		return -- Suppress this log
+	end
+	
+	-- Only log significant entities (optional: can be customized)
+	local entity = event.entity
+	if entity and entity.valid then
+		-- Uncomment the next line to enable building logs to Discord:
+		-- FactoCordIntegration.PrintToDiscord("**" .. player.name .. "** built " .. entity.name)
+	end
+end)
+
+-- Track entity removal/mining
+script.on_event(defines.events.on_player_mined_entity, function(event)
+	local player = game.players[event.player_index]
+	if not player then return end
+	
+	-- Check spy mode for this player
+	if FactoCordIntegration.IsSpyModeActive(player.name, "MINED_ENTITY") then
+		return -- Suppress this log
+	end
+	
+	local entity = event.entity
+	if entity and entity.valid then
+		-- Uncomment the next line to enable mining logs to Discord:
+		-- FactoCordIntegration.PrintToDiscord("**" .. player.name .. "** mined " .. entity.name)
+	end
+end)
+
+-- Track research completion
+script.on_event(defines.events.on_research_finished, function(event)
+	local research = event.research
+	if not research then return end
+	
+	-- Research is force-wide, check if any player in the force has spy mode
+	local force = research.force
+	local suppress = false
+	for _, player in pairs(force.players) do
+		if FactoCordIntegration.IsSpyModeActive(player.name, "RESEARCH") then
+			suppress = true
+			break
+		end
+	end
+	
+	if not suppress then
+		-- Uncomment the next line to enable research logs to Discord:
+		-- FactoCordIntegration.PrintToDiscord("Research completed: **" .. research.name .. "**")
+	end
+end)
+
+-- Track console commands (admin actions)
+script.on_event(defines.events.on_console_command, function(event)
+	if not event.player_index then return end -- Ignore server commands
+	local player = game.players[event.player_index]
+	if not player then return end
+	
+	-- Check spy mode for COMMAND events
+	if FactoCordIntegration.IsSpyModeActive(player.name, "COMMAND") then
+		return -- Suppress this log
+	end
+	
+	-- Don't log silent-commands (they're meant to be hidden)
+	if event.command == "silent-command" then
+		return
+	end
+	
+	-- Uncomment the next line to enable command logs to Discord:
+	-- FactoCordIntegration.PrintToDiscord("**" .. player.name .. "** used command: /" .. event.command)
+end)
+
 
 script.on_event(defines.events.on_player_died, function(event)
 	local p = game.players[event.player_index];
+	
+	-- Spy mode check for DIED events
+	if FactoCordIntegration.IsSpyModeActive(p.name, "DIED") then
+		return
+	end
+	
 	local c = event.cause
 	if not c then
 		FactoCordIntegration.PrintToDiscord("**" .. p.name .. "** died.");
@@ -164,20 +262,34 @@ script.on_event(defines.events.on_player_died, function(event)
 end)
 script.on_event(defines.events.on_player_kicked, function(event)
 	local p = game.players[event.player_index];
+	-- Spy mode check for KICKED events
+	if FactoCordIntegration.IsSpyModeActive(p.name, "KICKED") then
+		return
+	end
 	FactoCordIntegration.PrintToDiscord("**" .. p.name .. "** kicked.");
 end)
 script.on_event(defines.events.on_player_unbanned, function(event)
+	-- No spy mode check for unbanned - always show
 	FactoCordIntegration.PrintToDiscord("**" .. event.player_name .. "** unbanned.");
 end)
 script.on_event(defines.events.on_player_unmuted, function(event)
 	local p = game.players[event.player_index];
+	-- Spy mode check for UNMUTED events
+	if FactoCordIntegration.IsSpyModeActive(p.name, "MUTED") then
+		return
+	end
 	FactoCordIntegration.PrintToDiscord("**" .. p.name .. "** unmuted.");
 end)
 script.on_event(defines.events.on_player_banned, function(event)
+	-- No spy mode check for banned - always show (security relevant)
 	FactoCordIntegration.PrintToDiscord("**" .. event.player_name .. "** banned.");
 end)
 script.on_event(defines.events.on_player_muted, function(event)
 	local p = game.players[event.player_index];
+	-- Spy mode check for MUTED events
+	if FactoCordIntegration.IsSpyModeActive(p.name, "MUTED") then
+		return
+	end
 	FactoCordIntegration.PrintToDiscord("**" .. p.name .. "** muted.");
 end)
 
