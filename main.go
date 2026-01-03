@@ -1,97 +1,95 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
-	"log"
+	"fmt"
 	"os"
 	"os/signal"
 	"path/filepath"
-	"syscall"
+	"time"
 
-	"github.com/bwmarrin/discordgo"
 	"github.com/maxsupermanhd/FactoCord-3.0/v3/discord"
 	"github.com/maxsupermanhd/FactoCord-3.0/v3/factoriomod"
 	"github.com/maxsupermanhd/FactoCord-3.0/v3/support"
-	"github.com/maxsupermanhd/FactoCord-3.0/v3/utils"
 )
 
-var logger *utils.Logger
+var closing = false
 
 func main() {
-	// Logger initialisieren
-	logger = utils.NewLogger("FactoCord")
-	logger.Info("FactoCord 3.0 Mod-Settings Manager startet...")
+	if support.FactoCordVersion == "" {
+		support.FactoCordVersion = "development"
+	}
+	fmt.Printf("Welcome to FactoCord %s!\n", support.FactoCordVersion)
 
 	// Automatisches Setup - erstelle benötigte Verzeichnisse und Dateien
 	ensureDirectoriesExist()
 
-	// Standard-Config laden
+	// Config laden
 	support.Config.MustLoad()
 
-	token := support.Config.DiscordToken
-	if token == "" {
-		logger.Fatal("Discord-Token nicht in Config gefunden")
-	}
+	// Discord-Session starten
+	discord.StartSession()
 
-	// Discord-Session erstellen
-	dg, err := discordgo.New("Bot " + token)
-	if err != nil {
-		logger.Fatal("Discord-Session-Fehler: %v", err)
-	}
+	// Konsolen-Input Handler starten
+	go console()
 
-	// Factorio-Pfad aus Executable extrahieren oder Standard verwenden
+	// Factorio-Server initialisieren mit Log-Verarbeitung
+	support.Factorio.Init(discord.ProcessFactorioLogLine)
+
+	// Factorio-Pfad ermitteln für Mod-Manager
 	factorioPath := getFactorioPath()
 
-	// Module initialisieren
+	// Mod-Settings Manager initialisieren (optional)
 	factoriomod.InitModManager(factorioPath, "")
 	factoriomod.InitServerController(factorioPath, "")
+
+	// Session-Manager für DM-basierte Bearbeitung
 	discord.InitSessionManager("./temp")
 
-	// Verifikationsdaten laden
+	// Verifikationsdaten laden (für DM-Mod-Settings)
 	if err := discord.LoadVerificationData(); err != nil {
-		logger.Warn("Verifikationsdaten konnten nicht geladen werden: %v", err)
+		fmt.Printf("Verifikationsdaten konnten nicht geladen werden: %v\n", err)
 	}
 	discord.StartVerificationCleanup()
 
-	// Handler registrieren
-	dg.AddHandler(func(s *discordgo.Session, r *discordgo.Ready) {
-		handleReady(s, r)
-	})
+	// Discord Chat-Handler und Bot initialisieren
+	discord.Init()
 
-	// Message-Handler für Mod-Settings
-	dg.AddHandler(func(s *discordgo.Session, m *discordgo.MessageCreate) {
-		// Versuche zuerst Mod-Settings zu verarbeiten
-		if discord.HandleModSettingsMessage(s, m) {
-			return
-		}
-		// Sonst normaler DM-Handler
-		discord.HandleDMMessage(s, m)
-	})
-
-	// Component-Interaction-Handler
-	dg.AddHandler(discord.HandleComponentInteraction)
-
-	// Intents setzen
-	dg.Identify.Intents = discordgo.IntentsDirectMessages |
-		discordgo.IntentsMessageContent |
-		discordgo.IntentsGuildMessages |
-		discordgo.IntentsGuilds
-
-	// Session öffnen
-	err = dg.Open()
-	if err != nil {
-		logger.Fatal("Fehler beim Öffnen der Session: %v", err)
-	}
-
-	logger.Info("✅ FactoCord läuft. Drücke CTRL+C zum Beenden.")
-
-	// Warte auf Interrupt
+	// Auf Interrupt warten
 	sc := make(chan os.Signal, 1)
-	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
+	signal.Notify(sc, os.Interrupt, os.Kill)
 	<-sc
 
-	dg.Close()
-	logger.Info("✅ FactoCord beendet.")
+	closing = true
+
+	discord.Close()
+
+	for support.Factorio.IsStopping() {
+		time.Sleep(100 * time.Millisecond)
+	}
+	if support.Factorio.IsRunning() {
+		fmt.Println("Waiting for factorio server to exit...")
+		err := support.Factorio.Process.Wait()
+		if support.Factorio.Process.ProcessState.Exited() {
+			fmt.Println("\nFactorio server was closed, exit code", support.Factorio.Process.ProcessState.ExitCode())
+		} else {
+			fmt.Println("\nError waiting for factorio to exit")
+			support.Panik(err, "Error waiting for factorio to exit")
+		}
+	}
+}
+
+func console() {
+	Console := bufio.NewReader(os.Stdin)
+	for !closing {
+		line, _, err := Console.ReadLine()
+		if err != nil {
+			support.Panik(err, "An error occurred when attempting to read the input to pass as input to the console")
+			return
+		}
+		support.Factorio.Send(string(line))
+	}
 }
 
 func getFactorioPath() string {
@@ -100,7 +98,6 @@ func getFactorioPath() string {
 	if exec != "" {
 		// Extrahiere das Basisverzeichnis aus dem Executable-Pfad
 		// z.B. "../bin/x64/factorio" -> ".." oder "./factorio/bin/x64/factorio" -> "./factorio"
-		// Wir gehen davon aus, dass die Struktur: [base]/bin/x64/factorio ist
 		dir := filepath.Dir(exec) // bin/x64
 		dir = filepath.Dir(dir)   // bin
 		dir = filepath.Dir(dir)   // [base]
@@ -108,19 +105,18 @@ func getFactorioPath() string {
 		// Falls der Pfad relativ ist, mache ihn absolut
 		if absPath, err := filepath.Abs(dir); err == nil {
 			if _, statErr := os.Stat(absPath); statErr == nil {
-				logger.Info("Factorio-Pfad aus Executable ermittelt: %s", absPath)
+				fmt.Printf("Factorio-Pfad aus Executable ermittelt: %s\n", absPath)
 				return absPath
 			}
 		}
 
 		// Falls das nicht funktioniert, nutze ModListLocation
 		if support.Config.ModListLocation != "" {
-			// z.B. "./factorio/mods/mod-list.json" -> "./factorio"
-			modsDir := filepath.Dir(support.Config.ModListLocation) // mods
-			baseDir := filepath.Dir(modsDir)                        // factorio
+			modsDir := filepath.Dir(support.Config.ModListLocation)
+			baseDir := filepath.Dir(modsDir)
 			if absPath, err := filepath.Abs(baseDir); err == nil {
 				if _, statErr := os.Stat(absPath); statErr == nil {
-					logger.Info("Factorio-Pfad aus ModListLocation ermittelt: %s", absPath)
+					fmt.Printf("Factorio-Pfad aus ModListLocation ermittelt: %s\n", absPath)
 					return absPath
 				}
 			}
@@ -130,7 +126,7 @@ func getFactorioPath() string {
 	// Standard-Pfade prüfen
 	paths := []string{
 		"./factorio",
-		"..", // Falls FactoCord im Factorio-Verzeichnis läuft
+		"..",
 		"/opt/factorio",
 		"C:\\Program Files\\Factorio",
 	}
@@ -139,24 +135,12 @@ func getFactorioPath() string {
 		absPath, _ := filepath.Abs(p)
 		modsPath := filepath.Join(absPath, "mods")
 		if _, err := os.Stat(modsPath); err == nil {
-			logger.Info("Factorio-Pfad gefunden: %s", absPath)
+			fmt.Printf("Factorio-Pfad gefunden: %s\n", absPath)
 			return absPath
 		}
 	}
 
-	// Fallback: Verwende aktuelles Verzeichnis
-	logger.Warn("Kein Factorio-Pfad gefunden, verwende Standard")
 	return "."
-}
-
-func handleReady(s *discordgo.Session, event *discordgo.Ready) {
-	log.Printf("✅ Bot eingeloggt als: %s#%s (ID: %s)",
-		event.User.Username, event.User.Discriminator, event.User.ID)
-
-	// Speichere Guild ID falls verfügbar
-	if len(event.Guilds) > 0 {
-		support.GuildID = event.Guilds[0].ID
-	}
 }
 
 // ensureDirectoriesExist erstellt alle benötigten Verzeichnisse und Dateien automatisch
@@ -169,37 +153,21 @@ func ensureDirectoriesExist() {
 
 	for _, dir := range directories {
 		if err := os.MkdirAll(dir, 0755); err != nil {
-			logger.Warn("Konnte Verzeichnis %s nicht erstellen: %v", dir, err)
+			fmt.Printf("Konnte Verzeichnis %s nicht erstellen: %v\n", dir, err)
 		}
 	}
 
 	// Erstelle verification.json falls nicht vorhanden
-	verificationPath := support.Config.VerificationDataPath
-	if verificationPath == "" {
-		verificationPath = "./verification.json"
-	}
+	verificationPath := "./verification.json"
 
 	if _, err := os.Stat(verificationPath); os.IsNotExist(err) {
-		// Erstelle leere Verifikationsdatei
 		emptyData := map[string]interface{}{
 			"discord_to_factorio": map[string]string{},
 			"factorio_to_discord": map[string]string{},
 		}
 		data, _ := json.MarshalIndent(emptyData, "", "  ")
 		if err := os.WriteFile(verificationPath, data, 0644); err != nil {
-			logger.Warn("Konnte verification.json nicht erstellen: %v", err)
-		} else {
-			logger.Info("✅ verification.json erstellt")
+			fmt.Printf("Konnte verification.json nicht erstellen: %v\n", err)
 		}
 	}
-
-	// Erstelle mods-Verzeichnis falls benötigt
-	modsPath := filepath.Dir(support.Config.ModListLocation)
-	if modsPath != "" && modsPath != "." {
-		if err := os.MkdirAll(modsPath, 0755); err != nil {
-			logger.Warn("Konnte Mods-Verzeichnis %s nicht erstellen: %v", modsPath, err)
-		}
-	}
-
-	logger.Info("✅ Verzeichnisstruktur geprüft")
 }

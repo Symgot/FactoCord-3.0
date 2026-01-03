@@ -48,7 +48,8 @@ New-Item -ItemType Directory -Force -Path $releaseFactoCordDir | Out-Null
 Write-Host "Copying files..." -ForegroundColor Cyan
 Copy-Item -Path "config-example.json" -Destination $releaseFactoCordDir
 Copy-Item -Path "control.lua" -Destination $releaseFactoCordDir
-Copy-Item -Path "FactoCord3.exe" -Destination $releaseFactoCordDir\FactoCord3.exe
+# Copy executable without .exe extension
+Copy-Item -Path "FactoCord3.exe" -Destination $releaseFactoCordDir\FactoCord3
 Copy-Item -Path "INSTALL.md" -Destination $releaseFactoCordDir
 Copy-Item -Path "LICENSE" -Destination $releaseFactoCordDir
 Copy-Item -Path "README.md" -Destination $releaseFactoCordDir
@@ -56,7 +57,7 @@ Copy-Item -Path "SECURITY.md" -Destination $releaseFactoCordDir
 Copy-Item -Path "COMMANDS.md" -Destination $releaseFactoCordDir
 
 # Copy CGO-disabled version to release root
-Copy-Item -Path "FactoCord3-c.exe" -Destination $releaseDir\FactoCord3-c.exe
+Copy-Item -Path "FactoCord3-c.exe" -Destination $releaseDir\FactoCord3-c
 
 # Create archives
 Write-Host "`nCreating archives..." -ForegroundColor Cyan
@@ -83,7 +84,7 @@ Remove-Item -Force "FactoCord3-c.exe" -ErrorAction SilentlyContinue
 Write-Host "`n=== Build Complete ===" -ForegroundColor Green
 Write-Host "Release files are in: $releaseDir" -ForegroundColor Green
 Write-Host "  - FactoCord3\ (directory with all files)" -ForegroundColor Gray
-Write-Host "  - FactoCord3-c.exe (CGO-disabled executable)" -ForegroundColor Gray
+Write-Host "  - FactoCord3-c (CGO-disabled executable)" -ForegroundColor Gray
 Write-Host "  - FactoCord3.zip (archive)" -ForegroundColor Gray
 if (Get-Command tar -ErrorAction SilentlyContinue) {
     Write-Host "  - FactoCord3.tar.gz (archive)" -ForegroundColor Gray
