@@ -18,13 +18,19 @@ This document describes all available Discord commands for FactoCord 3.0 with de
   - [info](#info)
   - [online](#online)
   - [help](#help)
+- [DM Mod-Settings Manager](#dm-mod-settings-manager)
+  - [mods (DM)](#mods-dm)
+  - [modshelp](#modshelp)
+  - [save (DM)](#save-dm)
+  - [cancel](#cancel)
 
 ## Overview
 
-FactoCord 3.0 provides various Discord commands to manage and monitor your Factorio server. Commands are divided into two categories:
+FactoCord 3.0 provides various Discord commands to manage and monitor your Factorio server. Commands are divided into three categories:
 
 - **Admin Commands**: Require admin rights (configured in `config.json` under `admin_ids`) or a specific role
 - **Utility Commands**: Available to all users
+- **DM Mod-Settings**: Manage Factorio mod settings via Discord DMs (requires verification)
 
 The default command prefix is `$` (configurable in `config.json`).
 
@@ -837,12 +843,130 @@ These events are part of the stable Factorio Lua API and are fully supported in 
 
 ---
 
+## DM Mod-Settings Manager
+
+The Mod-Settings Manager allows verified users to manage Factorio mod settings directly via Discord DMs. Changes are applied with a server restart.
+
+### Requirements
+- User must be verified (Discord-Factorio account linked)
+- `enable_dm_chat: true` in config.json
+- Bot must have DM permissions
+
+### Verification
+Before using the Mod-Settings Manager, link your Discord account with your Factorio player name:
+1. In-game: Type `$$link` in chat
+2. A verification code will be shown
+3. DM the bot with the code
+4. Your accounts are now linked
+
+---
+
+### mods (DM)
+
+**Description:** Opens the interactive mod settings editor in DMs.
+
+**Usage:**
+```
+!mods
+```
+
+**Expected Output:** 
+- Interactive embed with all mods that have configurable settings
+- Select menu to choose a mod
+- Pagination for many mods
+
+**Features:**
+- 📋 Table-style mod listing showing name, status, game/map setting counts
+- 🔍 Select menu for quick mod selection
+- ◀️ ▶️ Pagination for large mod lists
+- 🔄 Refresh button to reload mods
+
+---
+
+### modshelp
+
+**Description:** Shows help for the Mod-Settings Manager.
+
+**Usage:**
+```
+!modshelp
+```
+
+**Expected Output:** Detailed help with available commands and workflow explanation.
+
+---
+
+### save (DM)
+
+**Description:** Shows preview of pending changes and allows saving.
+
+**Usage:**
+```
+!save
+```
+
+**Expected Output:**
+- Summary of all pending setting changes
+- Confirm/Cancel buttons
+- Warning about server restart
+
+**Process:**
+1. Review changes in the preview
+2. Click "✅ Speichern & Neustarten" to apply
+3. Server restarts automatically
+4. Changes are backed up before applying
+
+---
+
+### cancel
+
+**Description:** Cancels the current editing session and discards all changes.
+
+**Usage:**
+```
+!cancel
+```
+
+**Expected Output:** Confirmation message, session is cleared.
+
+---
+
+### Editing Workflow
+
+1. **Start**: Send `!mods` in a DM to the bot
+2. **Select Mod**: Choose a mod from the dropdown menu
+3. **Select Tab**: Choose between Game Settings (🎮) or Map Settings (🗺️)
+4. **Edit Setting**: Select a setting from the dropdown to edit
+5. **Enter Value**: Enter the new value in the modal dialog
+6. **Preview**: Click "💾 Speichern" to see changes preview
+7. **Confirm**: Click "✅ Speichern & Neustarten" to apply changes
+
+### Setting Types
+- **🔘 Boolean**: Enter `true` or `false`
+- **🔢 Number**: Enter integer or decimal number
+- **📝 Text**: Enter string value
+
+### Backup System
+Before applying changes, the bot automatically:
+- Creates a backup of `mod-settings.dat`
+- Stores it in `./backups/` with timestamp
+- Maximum 10 backups are kept
+
+---
+
 ## Additional Notes
 
 ### Command Prefix
 The default prefix is `$`, but can be changed in `config.json`:
 ```json
 "prefix": "$"
+```
+
+### DM Configuration
+Enable DM features in `config.json`:
+```json
+"enable_dm_chat": true,
+"verification_data_path": "./verification.json"
 ```
 
 ### Role-Based Permissions

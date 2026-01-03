@@ -1,0 +1,26 @@
+# FactoCord 3.0 - Konfiguration
+# Kopiere diese Datei zu config.yaml und passe die Werte an
+
+# Discord-Einstellungen
+discord:
+  token: "YOUR_DISCORD_BOT_TOKEN"
+  # prefix: "!"  # Optional, Standard: "!"
+
+# Factorio-Server-Einstellungen
+factorio:
+  path: "./"           # Pfad zum Factorio-Installationsverzeichnis
+  save_path: "./saves/gamesave.zip"  # Pfad zum Savegame
+  # executable: ""                # Optional: Pfad zur Factorio-Executable
+
+# Anwendungs-Einstellungen
+app:
+  temp_path: "./temp"             # Verzeichnis für temporäre Dateien
+  log_level: "INFO"               # Log-Level: DEBUG, INFO, WARN, ERROR, FATAL
+  backup_path: "./backups"        # Verzeichnis für Backups
+
+# Mod-Settings-Manager
+mod_settings:
+  enabled: true                   # Mod-Settings-Manager aktivieren
+  require_verification: true      # Nur verifizierte User dürfen Settings ändern
+  auto_restart: true              # Server automatisch neu starten nach Änderungen
+  max_changes_per_session: 50     # Maximale Änderungen pro Session

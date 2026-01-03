@@ -1,9 +1,9 @@
 module github.com/maxsupermanhd/FactoCord-3.0/v3
 
-go 1.19
+go 1.21
 
 require (
-	github.com/bwmarrin/discordgo v0.28.1
+	github.com/bwmarrin/discordgo v0.27.1
 	github.com/titanous/json5 v1.0.0
 )
 
