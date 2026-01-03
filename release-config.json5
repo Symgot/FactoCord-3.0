@@ -1,0 +1,84 @@
+// Release Configuration for FactoCord 3.0
+// Edit this file and then run the VS Code Task "Create GitHub Release"
+{
+    // Version format: 0.0.0 or 0.0.0a (with letter for Alpha/Beta)
+    "version": "3.1.0",
+    
+    // Branch to release from (usually "testing" or "master")
+    "branch": "testing",
+    
+    // Release title (displayed in GitHub Release)
+    "title": "FactoCord 3.1.0 - Ghost Mode & PlayerWatcher Overhaul",
+    
+    // Release description (Markdown supported)
+    "description": `## New Features
+
+### Ghost Mode
+- **Complete Invisibility**: Players can hide completely
+- **Fake Login/Logout**: Sends fake logout when activating, fake login when deactivating
+- **Fake Playtime**: Displays manipulated playtime
+- **Pre-Login Mode**: Ghost mode can be activated before logging in
+- **Auto-Silent Commands**: Configurable commands that are automatically executed silently
+
+### PlayerWatcher Overhaul
+- **Config-based Messages**: All messages are now configurable in config.json
+- **Prefix-based Commands**: Now uses the configured prefix instead of hardcoded \`!player\`
+- **Admin Command**: \`player_admin\` also shows hidden Ghost Mode players
+- **Playtime Display**: Automatic playtime display on leave events
+- **No More Discord Channel Monitoring**: Now monitors Factorio log directly
+
+### Technical Improvements
+- Complete log suppression for Ghost Mode (including console channel)
+- New config options for PlayerWatcher messages
+- Removed \`player_watcher_source_channel_id\` config option
+- Spy mode now works correctly in control.lua
+
+## Config Changes
+
+### New Config Options:
+\`\`\`json
+{
+  "messages": {
+    "player_watcher_join": "**Join:**\\n{username} hat sich eingeloggt",
+    "player_watcher_leave": "**Leave:**\\n{username} hat sich ausgeloggt",
+    "player_watcher_leave_time": "**Leave:**\\n{username} (Spielzeit: {playtime})",
+    "player_list_header": "**Aktive Spieler:** {count}",
+    "player_list_entry": "- {username}: online seit {playtime}",
+    "player_list_empty": "Es sind derzeit keine Spieler online."
+  }
+}
+\`\`\`
+
+### Removed Config Options:
+- \`player_watcher_source_channel_id\` (no longer needed)
+
+## New Commands
+
+- \`$ghost on\` - Activate Ghost Mode
+- \`$ghost off\` - Deactivate Ghost Mode
+- \`$ghost prelogin\` - Schedule Ghost Mode for next login
+- \`$ghost commands\` - Manage Auto-Silent Commands
+- \`$player_admin\` - Show all players including Ghost Mode players (admins only)
+
+## Installation
+
+1. Download \`FactoCord3.zip\` and extract it
+2. Copy the new \`control.lua\` to your Factorio scenario
+3. Update your \`config.json\` with the new options (see config-example.json)
+4. Restart FactoCord
+
+## Breaking Changes
+
+- \`player_watcher_source_channel_id\` has been removed - only use \`player_watcher_target_channel_id\`
+- \`!player\` command now uses the configured prefix (default: \`$player\`)
+`,
+    
+    // true = Pre-Release (Beta/Alpha), false = Stable Release
+    "prerelease": false,
+    
+    // true = Save as draft (do not publish immediately)
+    "draft": false,
+    
+    // Optional: Specific commit SHA (empty = latest commit of branch)
+    "target_commitish": ""
+}
