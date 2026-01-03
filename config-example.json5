@@ -29,9 +29,9 @@
     enable_console_channel: false,
     factorio_console_chat_id: "",
 
-    // Player Watcher: Watch a source channel for JOIN/LEAVE logs and forward to target channel
-    // Also enables the !player command to show online players with playtime
-    player_watcher_source_channel_id: "",
+    // Player Watcher: Target channel for JOIN/LEAVE notifications with playtime
+    // Enables the $player command to show online players with playtime
+    // Use $player_admin to see hidden (ghost mode) players
     player_watcher_target_channel_id: "",
 
     // DM Chat: Enable direct message communication with admins
@@ -76,12 +76,21 @@
         server_stop: "**:octagonal_sign: The server has stopped!**",
         server_fail: "**:skull: The server has crashed!**",
         server_save: "**:floppy_disk: Game saved!**",
+        server_ready: "**:green_circle: Server is ready for players!**",
         player_join: "**:arrow_up: {username}**",
-        player_leave: "**:arrow_down: {username}s**",
+        player_leave: "**:arrow_down: {username}**",
+        player_leave_time: "**:arrow_down: {username}** (Spielzeit: {playtime})",
         download_start: ":arrow_down: Downloading {file}...",
         download_progress: ":arrow_down: Downloading {file}: {percent}%",
         download_complete: ":white_check_mark: Downloaded {file}",
         unpacking: ":pinching_hand: Unpacking {file}...",
         unpacking_complete: ":ok_hand: Server updated to {version}",
+        // Player Watcher messages
+        player_watcher_join: "**Join:**\n{username} has logged into the server",
+        player_watcher_leave: "**Leave:**\n{username} has logged out of the server",
+        player_watcher_leave_time: "**Leave:**\n{username} has logged out of the server (Playtime: {playtime})",
+        player_list_header: "**Active Players:** {count}",
+        player_list_entry: "- {username}: online for {playtime}",
+        player_list_empty: "There are currently no players online.",
     }
 }
