@@ -51,6 +51,15 @@ func Init() {
 	// Initialize player watcher
 	InitPlayerWatcher(Session)
 
+	// Initialize DM chat functionality
+	if support.Config.EnableDMChat {
+		err := LoadVerificationData()
+		if err != nil {
+			support.Panik(err, "... when loading verification data")
+		}
+		StartVerificationCleanup()
+	}
+
 	time.Sleep(3 * time.Second)
 	err := Session.UpdateGameStatus(0, support.Config.GameName)
 	support.Panik(err, "... when updating bot status")
@@ -74,6 +83,11 @@ func Close() {
 
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if m.Author.ID == s.State.User.ID {
+		return
+	}
+
+	// Handle DM messages first
+	if HandleDMMessage(s, m) {
 		return
 	}
 
@@ -150,7 +164,6 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		support.SendTo(s, "wrote "+m.Content, support.Config.FactorioConsoleChatID)
 		support.Factorio.Send(m.Content)
 	}
-	return
 }
 
 func messageUpdate(s *discordgo.Session, m *discordgo.MessageUpdate) {

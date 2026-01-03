@@ -1,3 +1,7 @@
 {
-    "xml.downloadExternalResources.enabled": true
+    "xml.downloadExternalResources.enabled": true,
+    "Lua.workspace.userThirdParty": [
+        "c:\\Users\\Shadow\\AppData\\Roaming\\Code\\User\\workspaceStorage\\61d45318ea759a76219458fce8968401\\justarandomgeek.factoriomod-debug\\sumneko-3rd"
+    ],
+    "Lua.workspace.checkThirdParty": "ApplyInMemory"
 }

@@ -19,13 +19,15 @@ import (
 var ServerCommandDoc = support.CommandDoc{
 	Name: "server",
 	Usage: "$server\n" +
-		"$server [stop|start|restart|update <version>?]",
+		"$server [stop|start|restart|pause|resume|update <version>?]",
 	Doc: "command manages factorio server.\n" +
 		"`$server` shows current server status. Anyone can execute it.`",
 	Subcommands: []support.CommandDoc{
 		{Name: "stop", Doc: `command stops the server`},
 		{Name: "start", Doc: `command starts the server`},
 		{Name: "restart", Doc: `command restarts the server`},
+		{Name: "pause", Doc: `command pauses a running server`},
+		{Name: "resume", Doc: `command resumes a paused server`},
 		{
 			Name: "update",
 			Doc:  `command updates to server to the newest version or to the specified version`,
@@ -61,6 +63,10 @@ func ServerCommand(s *discordgo.Session, args string) {
 	case "restart":
 		support.Factorio.Stop(s)
 		support.Factorio.Start(s)
+	case "pause":
+		support.Factorio.Pause(s)
+	case "resume":
+		support.Factorio.Resume(s)
 	case "install":
 		serverUpdate(s, false, arg)
 	case "update":

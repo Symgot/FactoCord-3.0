@@ -1,10 +1,10 @@
 # FactoCord 3.0 - Discord Commands Tutorial
 
-Dieses Dokument beschreibt alle verfügbaren Discord-Commands für FactoCord 3.0 mit detaillierten Beispielen und Testanweisungen.
+This document describes all available Discord commands for FactoCord 3.0 with detailed examples and testing instructions.
 
-## Inhaltsverzeichnis
-- [Übersicht](#übersicht)
-- [Admin-Commands](#admin-commands)
+## Table of Contents
+- [Overview](#overview)
+- [Admin Commands](#admin-commands)
   - [server](#server)
   - [save](#save)
   - [kick](#kick)
@@ -12,35 +12,35 @@ Dieses Dokument beschreibt alle verfügbaren Discord-Commands für FactoCord 3.0
   - [unban](#unban)
   - [config](#config)
   - [mod](#mod)
-- [Utility-Commands](#utility-commands)
+- [Utility Commands](#utility-commands)
   - [mods](#mods)
   - [version](#version)
   - [info](#info)
   - [online](#online)
   - [help](#help)
 
-## Übersicht
+## Overview
 
-FactoCord 3.0 bietet verschiedene Discord-Commands zur Verwaltung und Überwachung deines Factorio-Servers. Commands sind in zwei Kategorien unterteilt:
+FactoCord 3.0 provides various Discord commands to manage and monitor your Factorio server. Commands are divided into two categories:
 
-- **Admin-Commands**: Erfordern Admin-Rechte (konfiguriert in `config.json` unter `admin_ids`) oder eine spezifische Rolle
-- **Utility-Commands**: Für alle Benutzer verfügbar
+- **Admin Commands**: Require admin rights (configured in `config.json` under `admin_ids`) or a specific role
+- **Utility Commands**: Available to all users
 
-Standardmäßig ist das Command-Prefix `$` (konfigurierbar in `config.json`).
+The default command prefix is `$` (configurable in `config.json`).
 
 ---
 
-## Admin-Commands
+## Admin Commands
 
 ### server
 
-**Beschreibung:** Verwaltet den Factorio-Server (Start, Stop, Neustart, Updates).
+**Description:** Manages the Factorio server (start, stop, restart, updates).
 
-**Berechtigungen:** 
-- Status-Abfrage: Alle Benutzer
-- Steuerung: Nur Admins
+**Permissions:** 
+- Status query: All users
+- Control: Admins only
 
-**Verwendung:**
+**Usage:**
 ```
 $server
 $server stop
@@ -53,260 +53,260 @@ $server install [version]
 **Subcommands:**
 
 #### $server
-Zeigt den aktuellen Status des Servers an (läuft oder gestoppt).
+Displays the current server status (running or stopped).
 
-**Beispiel:**
+**Example:**
 ```
 $server
 ```
-**Erwartete Ausgabe:** `Factorio server is **running**` oder `Factorio server is **stopped**`
+**Expected Output:** `Factorio server is **running**` or `Factorio server is **stopped**`
 
 ---
 
 #### $server stop
-Stoppt den laufenden Factorio-Server.
+Stops the running Factorio server.
 
-**Beispiel:**
+**Example:**
 ```
 $server stop
 ```
-**Erwartete Ausgabe:** Server wird heruntergefahren, Status-Nachricht wird gesendet.
+**Expected Output:** Server shuts down, status message is sent.
 
-**Test:** Führe nach dem Stoppen `$server` aus, um zu bestätigen, dass der Server gestoppt ist.
+**Test:** Run `$server` after stopping to confirm the server is stopped.
 
 ---
 
 #### $server start
-Startet den Factorio-Server.
+Starts the Factorio server.
 
-**Beispiel:**
+**Example:**
 ```
 $server start
 ```
-**Erwartete Ausgabe:** Server wird gestartet, Status-Nachricht wird gesendet.
+**Expected Output:** Server starts, status message is sent.
 
-**Test:** Führe nach dem Start `$server` aus, um zu bestätigen, dass der Server läuft.
+**Test:** Run `$server` after starting to confirm the server is running.
 
 ---
 
 #### $server restart
-Startet den Factorio-Server neu (Stop + Start).
+Restarts the Factorio server (stop + start).
 
-**Beispiel:**
+**Example:**
 ```
 $server restart
 ```
-**Erwartete Ausgabe:** Server wird gestoppt und dann neu gestartet.
+**Expected Output:** Server is stopped and then restarted.
 
-**Test:** Überprüfe mit `$server`, ob der Server nach dem Neustart wieder läuft.
+**Test:** Check with `$server` if the server is running again after restart.
 
 ---
 
 #### $server update [version]
-Aktualisiert den Factorio-Server auf die neueste oder eine spezifische Version.
+Updates the Factorio server to the latest or a specific version.
 
-**Hinweis:** Server muss vor dem Update gestoppt sein.
+**Note:** Server must be stopped before updating.
 
-**Beispiele:**
+**Examples:**
 ```
 $server update
 $server update 1.1.100
 ```
 
-**Erwartete Ausgabe:** 
-- Download-Fortschritt wird angezeigt
-- Entpacken-Nachricht
-- Erfolgsmeldung mit Versionsnummer
+**Expected Output:** 
+- Download progress is displayed
+- Unpacking message
+- Success message with version number
 
 **Test:**
-1. Stoppe den Server: `$server stop`
-2. Update auf neueste Version: `$server update`
-3. Überprüfe Version nach dem Start: `$version`
+1. Stop the server: `$server stop`
+2. Update to latest version: `$server update`
+3. Check version after start: `$version`
 
 ---
 
 #### $server install [version]
-Installiert eine Factorio-Server-Version ohne Versionsprüfung (ähnlich wie update, aber ohne Check der aktuellen Version).
+Installs a Factorio server version without version check (similar to update, but without checking current version).
 
-**Beispiele:**
+**Examples:**
 ```
 $server install
 $server install 1.1.100
 ```
 
-**Test:** Gleich wie bei `$server update`
+**Test:** Same as `$server update`
 
 ---
 
 ### save
 
-**Beschreibung:** Speichert das aktuelle Spiel.
+**Description:** Saves the current game.
 
-**Berechtigungen:** Admin
+**Permissions:** Admin
 
-**Verwendung:**
+**Usage:**
 ```
 $save
 ```
 
-**Beispiel:**
+**Example:**
 ```
 $save
 ```
 
-**Erwartete Ausgabe:** Speichervorgang wird auf dem Factorio-Server ausgeführt, Bestätigungsnachricht in Discord.
+**Expected Output:** Save operation is executed on the Factorio server, confirmation message in Discord.
 
 **Test:** 
-1. Führe `$save` aus
-2. Überprüfe die Factorio-Server-Logs auf `/save` Command
-3. Achte auf die Discord-Nachricht, die den erfolgreichen Speichervorgang bestätigt
+1. Run `$save`
+2. Check Factorio server logs for `/save` command
+3. Look for Discord message confirming successful save
 
 ---
 
 ### kick
 
-**Beschreibung:** Wirft einen Spieler vom Server mit einem angegebenen Grund.
+**Description:** Kicks a player from the server with a specified reason.
 
-**Berechtigungen:** Admin
+**Permissions:** Admin
 
-**Verwendung:**
+**Usage:**
 ```
-$kick <spielername> <grund>
-```
-
-**Parameter:**
-- `<spielername>`: Der Name des Spielers, der gekickt werden soll
-- `<grund>`: Der Grund für den Kick (mehrere Wörter erlaubt)
-
-**Beispiel:**
-```
-$kick PlayerName Regelverstoß
-$kick TestUser Inaktivität seit 30 Minuten
+$kick <playername> <reason>
 ```
 
-**Erwartete Ausgabe:** `Player PlayerName kicked with reason Regelverstoß!`
+**Parameters:**
+- `<playername>`: Name of the player to kick
+- `<reason>`: Reason for the kick (multiple words allowed)
+
+**Example:**
+```
+$kick PlayerName Rule violation
+$kick TestUser Inactive for 30 minutes
+```
+
+**Expected Output:** `Player PlayerName kicked with reason Rule violation!`
 
 **Test:**
-1. Verbinde dich mit dem Server mit einem Test-Account
-2. Führe `$kick TestUser Testgrund` aus
-3. Bestätige, dass der Spieler vom Server getrennt wurde
-4. Überprüfe die Kick-Nachricht in Discord und im Factorio-Server
+1. Connect to the server with a test account
+2. Run `$kick TestUser Test reason`
+3. Confirm that the player was disconnected from the server
+4. Check the kick message in Discord and on the Factorio server
 
 ---
 
 ### ban
 
-**Beschreibung:** Bannt einen Spieler vom Server mit einem angegebenen Grund.
+**Description:** Bans a player from the server with a specified reason.
 
-**Berechtigungen:** Admin
+**Permissions:** Admin
 
-**Verwendung:**
+**Usage:**
 ```
-$ban <spielername> <grund>
+$ban <playername> <reason>
 ```
 
-**Parameter:**
-- `<spielername>`: Der Name des Spielers, der gebannt werden soll
-- `<grund>`: Der Grund für den Bann (mehrere Wörter erlaubt)
+**Parameters:**
+- `<playername>`: Name of the player to ban
+- `<reason>`: Reason for the ban (multiple words allowed)
 
-**Beispiel:**
+**Example:**
 ```
 $ban PlayerName Cheating
-$ban GrieferUser Griefing und wiederholte Verstöße
+$ban GrieferUser Griefing and repeated violations
 ```
 
-**Erwartete Ausgabe:** `Player PlayerName banned with reason "Cheating"!`
+**Expected Output:** `Player PlayerName banned with reason "Cheating"!`
 
 **Test:**
-1. Banne einen Test-Benutzer: `$ban TestUser Testbann`
-2. Versuche dich mit diesem Account zu verbinden (sollte fehlschlagen)
-3. Überprüfe die Ban-Liste auf dem Server
-4. Entferne den Bann mit `$unban TestUser` nach dem Test
+1. Ban a test user: `$ban TestUser Test ban`
+2. Try connecting with this account (should fail)
+3. Check the ban list on the server
+4. Remove the ban with `$unban TestUser` after testing
 
 ---
 
 ### unban
 
-**Beschreibung:** Entfernt einen Spieler von der Ban-Liste.
+**Description:** Removes a player from the ban list.
 
-**Berechtigungen:** Admin
+**Permissions:** Admin
 
-**Verwendung:**
+**Usage:**
 ```
-$unban <spielername>
+$unban <playername>
 ```
 
-**Parameter:**
-- `<spielername>`: Der Name des Spielers, der entbannt werden soll (keine Leerzeichen im Namen)
+**Parameters:**
+- `<playername>`: Name of the player to unban (no spaces in name)
 
-**Beispiel:**
+**Example:**
 ```
 $unban PlayerName
 ```
 
-**Erwartete Ausgabe:** `Player PlayerName unbanned!`
+**Expected Output:** `Player PlayerName unbanned!`
 
 **Test:**
-1. Banne zuerst einen Spieler: `$ban TestUser Testgrund`
-2. Entbanne den Spieler: `$unban TestUser`
-3. Versuche dich mit diesem Account zu verbinden (sollte erfolgreich sein)
-4. Überprüfe die Discord-Nachricht und Server-Logs
+1. First ban a player: `$ban TestUser Test reason`
+2. Unban the player: `$unban TestUser`
+3. Try connecting with this account (should succeed)
+4. Check Discord message and server logs
 
 ---
 
 ### config
 
-**Beschreibung:** Verwaltet die FactoCord-Konfiguration direkt über Discord.
+**Description:** Manages the FactoCord configuration directly via Discord.
 
-**Berechtigungen:** Admin
+**Permissions:** Admin
 
-**Verwendung:**
+**Usage:**
 ```
 $config save
 $config load
-$config get [pfad]
-$config set <pfad> [wert]
+$config get [path]
+$config set <path> [value]
 ```
 
 **Subcommands:**
 
 #### $config save
-Speichert die aktuelle Konfiguration aus dem Speicher in `config.json`.
+Saves the current configuration from memory to `config.json`.
 
-**Beispiel:**
+**Example:**
 ```
 $config save
 ```
 
-**Erwartete Ausgabe:** `Config saved`
+**Expected Output:** `Config saved`
 
 **Test:** 
-1. Ändere eine Einstellung: `$config set prefix !`
-2. Speichere: `$config save`
-3. Überprüfe die `config.json` Datei auf dem Server
+1. Change a setting: `$config set prefix !`
+2. Save: `$config save`
+3. Check the `config.json` file on the server
 
 ---
 
 #### $config load
-Lädt die Konfiguration aus `config.json` neu. Nicht gespeicherte Änderungen gehen verloren.
+Reloads the configuration from `config.json`. Unsaved changes will be lost.
 
-**Beispiel:**
+**Example:**
 ```
 $config load
 ```
 
-**Erwartete Ausgabe:** `Config reloaded`
+**Expected Output:** `Config reloaded`
 
 **Test:**
-1. Lade die Konfiguration neu: `$config load`
-2. Überprüfe, ob Änderungen wirksam wurden
+1. Reload configuration: `$config load`
+2. Verify that changes took effect
 
 ---
 
-#### $config get [pfad]
-Zeigt den Wert einer Konfigurationseinstellung an. Pfad-Elemente werden durch Punkte getrennt.
+#### $config get [path]
+Displays the value of a configuration setting. Path elements are separated by dots.
 
-**Beispiele:**
+**Examples:**
 ```
 $config get
 $config get prefix
@@ -318,24 +318,24 @@ $config get messages
 $config get messages.server_save
 ```
 
-**Erwartete Ausgabe:** JSON-formatierte Anzeige des Konfigurationswertes
+**Expected Output:** JSON-formatted display of the configuration value
 
 **Test:**
-1. Zeige das gesamte Config-Objekt: `$config get`
-2. Zeige den Prefix: `$config get prefix`
-3. Zeige Admin-IDs: `$config get admin_ids`
+1. Show entire config object: `$config get`
+2. Show prefix: `$config get prefix`
+3. Show admin IDs: `$config get admin_ids`
 
 ---
 
-#### $config set <pfad> [wert]
-Setzt den Wert einer Konfigurationseinstellung. Änderungen werden erst nach `$config save` dauerhaft gespeichert.
+#### $config set <path> [value]
+Sets the value of a configuration setting. Changes are only saved permanently after `$config save`.
 
-**Wichtige Hinweise:**
-- Um einen Wert zu einem Array hinzuzufügen, verwende `*` als Index: `$config set admin_ids.* 123456`
-- Strings mit Leerzeichen in Anführungszeichen setzen: `$config set game_name "Mein Server"`
-- Ohne Wert wird der Eintrag gelöscht oder auf Null gesetzt
+**Important Notes:**
+- To add a value to an array, use `*` as index: `$config set admin_ids.* 123456`
+- Put strings with spaces in quotes: `$config set game_name "My Server"`
+- Without value, the entry is deleted or set to null
 
-**Beispiele:**
+**Examples:**
 ```
 $config set prefix !
 $config set game_name "Factorio 1.0"
@@ -346,31 +346,31 @@ $config set command_roles.mod 55555555
 $config set messages.server_save "**:mango: Game saved!**"
 ```
 
-**Erwartete Ausgabe:** `Value set`
+**Expected Output:** `Value set`
 
-**Test-Sequenz:**
-1. Zeige aktuellen Prefix: `$config get prefix`
-2. Ändere Prefix: `$config set prefix !`
-3. Zeige neuen Prefix: `$config get prefix`
-4. Speichere: `$config save`
-5. Teste neuen Prefix: `!version`
-6. Setze zurück auf Standard: `!config set prefix $` und `!config save`
+**Test Sequence:**
+1. Show current prefix: `$config get prefix`
+2. Change prefix: `$config set prefix !`
+3. Show new prefix: `$config get prefix`
+4. Save: `$config save`
+5. Test new prefix: `!version`
+6. Reset to default: `!config set prefix $` and `!config save`
 
 ---
 
 ### mod
 
-**Beschreibung:** Verwaltet Factorio-Mods (Hinzufügen, Entfernen, Aktivieren, Deaktivieren, Aktualisieren).
+**Description:** Manages Factorio mods (add, remove, enable, disable, update).
 
-**Berechtigungen:** Admin
+**Permissions:** Admin
 
-**Wichtige Hinweise:**
-- Mod-Namen mit Leerzeichen müssen in Anführungszeichen gesetzt werden: `"Squeak Through"`
-- Mehrere Mods können gleichzeitig verarbeitet werden (durch Leerzeichen getrennt)
-- Versionen können mit `==` angegeben werden (FactoCord-spezifische Syntax): `FNEI==0.3.4`
-- Mods müssen mit der Factorio-Version kompatibel sein
+**Important Notes:**
+- Mod names with spaces must be in quotes: `"Squeak Through"`
+- Multiple mods can be processed simultaneously (separated by spaces)
+- Versions can be specified with `==` (FactoCord-specific syntax): `FNEI==0.3.4`
+- Mods must be compatible with the Factorio version
 
-**Verwendung:**
+**Usage:**
 ```
 $mod add <modname>+
 $mod update [modname]+
@@ -382,9 +382,9 @@ $mod disable <modname>+
 **Subcommands:**
 
 #### $mod add <modname>+
-Fügt Mods zu mod-list.json hinzu und lädt die neueste oder eine spezifische Version herunter.
+Adds mods to mod-list.json and downloads the latest or a specific version.
 
-**Beispiele:**
+**Examples:**
 ```
 $mod add FNEI
 $mod add "Squeak Through"
@@ -392,23 +392,23 @@ $mod add FNEI==0.3.4
 $mod add FNEI Bottleneck "Squeak Through"
 ```
 
-**Erwartete Ausgabe:** 
-- Liste der hinzugefügten Mods
-- Download-Fortschritt für jeden Mod
-- Abhängigkeitsprüfung und Empfehlungen
+**Expected Output:** 
+- List of added mods
+- Download progress for each mod
+- Dependency check and recommendations
 
 **Test:**
-1. Füge einen einzelnen Mod hinzu: `$mod add FNEI`
-2. Überprüfe Download-Fortschritt in Discord
-3. Verifiziere mit `$mods files`, dass die Datei heruntergeladen wurde
-4. Überprüfe `mod-list.json` auf dem Server
+1. Add a single mod: `$mod add FNEI`
+2. Check download progress in Discord
+3. Verify with `$mods files` that the file was downloaded
+4. Check `mod-list.json` on the server
 
 ---
 
 #### $mod update [modname]+
-Aktualisiert die angegebenen Mods oder alle Mods auf die neueste Version.
+Updates the specified mods or all mods to the latest version.
 
-**Beispiele:**
+**Examples:**
 ```
 $mod update
 $mod update FNEI
@@ -416,279 +416,279 @@ $mod update FNEI==0.3.5
 $mod update FNEI Bottleneck
 ```
 
-**Erwartete Ausgabe:**
-- Liste der aktualisierten Mods mit alten und neuen Versionsnummern
-- Download-Fortschritt
-- Liste bereits aktueller Mods
-- Abhängigkeitswarnungen falls vorhanden
+**Expected Output:**
+- List of updated mods with old and new version numbers
+- Download progress
+- List of already up-to-date mods
+- Dependency warnings if any
 
 **Test:**
-1. Zeige installierte Mods: `$mods files`
-2. Update alle Mods: `$mod update`
-3. Verifiziere neue Versionen: `$mods files`
+1. Show installed mods: `$mods files`
+2. Update all mods: `$mod update`
+3. Verify new versions: `$mods files`
 
 ---
 
 #### $mod remove <modname>+
-Entfernt Mods aus mod-list.json und löscht die Mod-Dateien.
+Removes mods from mod-list.json and deletes the mod files.
 
-**Beispiele:**
+**Examples:**
 ```
 $mod remove FNEI
 $mod remove FNEI Bottleneck
 $mod remove "Squeak Through"
 ```
 
-**Erwartete Ausgabe:**
-- Liste der entfernten Mods
-- Liste der gelöschten Dateien
-- Meldung falls Mod nicht gefunden
+**Expected Output:**
+- List of removed mods
+- List of deleted files
+- Message if mod not found
 
 **Test:**
-1. Entferne einen Mod: `$mod remove FNEI`
-2. Bestätige mit `$mods files`, dass die Datei gelöscht wurde
-3. Überprüfe `mod-list.json` auf dem Server
+1. Remove a mod: `$mod remove FNEI`
+2. Confirm with `$mods files` that the file was deleted
+3. Check `mod-list.json` on the server
 
 ---
 
 #### $mod enable <modname>+
-Aktiviert Mods in mod-list.json (Mods müssen bereits installiert sein).
+Enables mods in mod-list.json (mods must already be installed).
 
-**Beispiele:**
+**Examples:**
 ```
 $mod enable FNEI
 $mod enable FNEI Bottleneck
 ```
 
-**Erwartete Ausgabe:** `Enabled mod "FNEI"` oder Liste aktivierter Mods
+**Expected Output:** `Enabled mod "FNEI"` or list of enabled mods
 
 **Test:**
-1. Deaktiviere einen Mod: `$mod disable FNEI`
-2. Überprüfe Status: `$mods all`
-3. Aktiviere wieder: `$mod enable FNEI`
-4. Bestätige mit `$mods all`
+1. Disable a mod: `$mod disable FNEI`
+2. Check status: `$mods all`
+3. Enable again: `$mod enable FNEI`
+4. Confirm with `$mods all`
 
 ---
 
 #### $mod disable <modname>+
-Deaktiviert Mods in mod-list.json (Dateien bleiben erhalten).
+Disables mods in mod-list.json (files remain).
 
-**Beispiele:**
+**Examples:**
 ```
 $mod disable FNEI
 $mod disable FNEI Bottleneck
 ```
 
-**Erwartete Ausgabe:** `Disabled mod "FNEI"` oder Liste deaktivierter Mods
+**Expected Output:** `Disabled mod "FNEI"` or list of disabled mods
 
 **Test:**
-1. Deaktiviere einen Mod: `$mod disable FNEI`
-2. Überprüfe mit `$mods all`, dass der Mod als deaktiviert angezeigt wird
-3. Starte Server neu und verifiziere, dass der Mod nicht geladen wird
+1. Disable a mod: `$mod disable FNEI`
+2. Check with `$mods all` that the mod is shown as disabled
+3. Restart server and verify that the mod is not loaded
 
 ---
 
-## Utility-Commands
+## Utility Commands
 
 ### mods
 
-**Beschreibung:** Zeigt Informationen über installierte Mods an.
+**Description:** Shows information about installed mods.
 
-**Berechtigungen:** Alle Benutzer
+**Permissions:** All users
 
-**Verwendung:**
+**Usage:**
 ```
 $mods [on|off|all|files]
 ```
 
 **Subcommands:**
 
-#### $mods oder $mods on
-Zeigt aktuell aktivierte Mods aus mod-list.json.
+#### $mods or $mods on
+Shows currently enabled mods from mod-list.json.
 
-**Beispiel:**
+**Example:**
 ```
 $mods
 $mods on
 ```
 
-**Erwartete Ausgabe:** Liste aller aktivierten Mods mit Zählung
+**Expected Output:** List of all enabled mods with count
 
-**Test:** Führe `$mods` aus und vergleiche mit dem Inhalt von `mod-list.json`
+**Test:** Run `$mods` and compare with contents of `mod-list.json`
 
 ---
 
 #### $mods off
-Zeigt aktuell deaktivierte Mods aus mod-list.json.
+Shows currently disabled mods from mod-list.json.
 
-**Beispiel:**
+**Example:**
 ```
 $mods off
 ```
 
-**Erwartete Ausgabe:** Liste aller deaktivierten Mods
+**Expected Output:** List of all disabled mods
 
 **Test:**
-1. Deaktiviere einen Mod: `$mod disable FNEI`
-2. Führe aus: `$mods off`
-3. FNEI sollte in der Liste erscheinen
+1. Disable a mod: `$mod disable FNEI`
+2. Run: `$mods off`
+3. FNEI should appear in the list
 
 ---
 
 #### $mods all
-Zeigt alle Mods aus mod-list.json (aktiviert und deaktiviert).
+Shows all mods from mod-list.json (enabled and disabled).
 
-**Beispiel:**
+**Example:**
 ```
 $mods all
 ```
 
-**Erwartete Ausgabe:** Vollständige Liste mit Markierung des Status (aktiviert/deaktiviert)
+**Expected Output:** Complete list with status indicator (enabled/disabled)
 
-**Test:** Führe `$mods all` aus und überprüfe, ob die Ausgabe dem Inhalt von `mod-list.json` entspricht
+**Test:** Run `$mods all` and check if the output matches the contents of `mod-list.json`
 
 ---
 
 #### $mods files
-Zeigt alle heruntergeladenen Mod-Dateien im Mod-Verzeichnis.
+Shows all downloaded mod files in the mod directory.
 
-**Beispiel:**
+**Example:**
 ```
 $mods files
 ```
 
-**Erwartete Ausgabe:** Liste aller `.zip` Mod-Dateien mit Versionsnummern
+**Expected Output:** List of all `.zip` mod files with version numbers
 
 **Test:** 
-1. Führe `$mods files` aus
-2. Überprüfe das Mod-Verzeichnis auf dem Server
-3. Vergleiche die Listen
+1. Run `$mods files`
+2. Check the mod directory on the server
+3. Compare the lists
 
 ---
 
 ### version
 
-**Beschreibung:** Zeigt die Factorio-Server-Version und die FactoCord-Version an.
+**Description:** Shows the Factorio server version and FactoCord version.
 
-**Berechtigungen:** Alle Benutzer
+**Permissions:** All users
 
-**Verwendung:**
+**Usage:**
 ```
 $version
 ```
 
-**Beispiel:**
+**Example:**
 ```
 $version
 ```
 
-**Erwartete Ausgabe:** 
+**Expected Output:** 
 ```
 Server version: **1.1.100**
 FactoCord version: **3.0.x**
 ```
 
-**Test:** Führe `$version` aus und vergleiche die Factorio-Version mit der tatsächlichen Server-Version (prüfbar durch direktes Ausführen von `factorio --version` auf dem Server)
+**Test:** Run `$version` and compare the Factorio version with the actual server version (verifiable by directly running `factorio --version` on the server)
 
 ---
 
 ### info
 
-**Beschreibung:** Zeigt Serverinformationen aus der Factorio-Lobby an (Name, Beschreibung, Version, Tags, Spieler).
+**Description:** Shows server information from the Factorio lobby (name, description, version, tags, players).
 
-**Berechtigungen:** Alle Benutzer
+**Permissions:** All users
 
-**Wichtig:** Server muss laufen und bei der Factorio-Lobby registriert sein.
+**Important:** Server must be running and registered with the Factorio lobby.
 
-**Verwendung:**
+**Usage:**
 ```
 $info
 ```
 
-**Beispiel:**
+**Example:**
 ```
 $info
 ```
 
-**Erwartete Ausgabe:** 
-- Embed mit Servernamen
-- Beschreibung
-- Factorio-Version
+**Expected Output:** 
+- Embed with server name
+- Description
+- Factorio version
 - Tags
-- Online-Spieler
+- Online players
 
 **Test:**
-1. Starte den Server: `$server start`
-2. Warte, bis Server bei der Lobby registriert ist (~30 Sekunden)
-3. Führe aus: `$info`
-4. Vergleiche mit der Factorio-Multiplayer-Browser-Ansicht
+1. Start the server: `$server start`
+2. Wait for server to register with lobby (~30 seconds)
+3. Run: `$info`
+4. Compare with Factorio multiplayer browser view
 
 ---
 
 ### online
 
-**Beschreibung:** Zeigt die aktuell online Spieler an.
+**Description:** Shows currently online players.
 
-**Berechtigungen:** Alle Benutzer
+**Permissions:** All users
 
-**Wichtig:** Server muss laufen und bei der Factorio-Lobby registriert sein.
+**Important:** Server must be running and registered with the Factorio lobby.
 
-**Verwendung:**
+**Usage:**
 ```
 $online
 ```
 
-**Beispiel:**
+**Example:**
 ```
 $online
 ```
 
-**Erwartete Ausgabe:** 
-- Liste der Online-Spieler
-- Anzahl Spieler / Maximale Spieler (falls gesetzt)
-- Oder: `**No one is online**`
+**Expected Output:** 
+- List of online players
+- Player count / Maximum players (if set)
+- Or: `**No one is online**`
 
 **Test:**
-1. Starte den Server: `$server start`
-2. Verbinde dich mit dem Server mit einem Spieler
-3. Führe aus: `$online`
-4. Dein Spielername sollte in der Liste erscheinen
+1. Start the server: `$server start`
+2. Connect to the server with a player
+3. Run: `$online`
+4. Your player name should appear in the list
 
 ---
 
 ### help
 
-**Beschreibung:** Zeigt alle verfügbaren Commands oder detaillierte Hilfe zu einem spezifischen Command an.
+**Description:** Shows all available commands or detailed help for a specific command.
 
-**Berechtigungen:** Alle Benutzer
+**Permissions:** All users
 
-**Verwendung:**
+**Usage:**
 ```
 $help
 $help <command>
 $help <command> <subcommand>
 ```
 
-**Beispiele:**
+**Examples:**
 
 #### $help
-Zeigt alle verfügbaren Commands mit kurzer Beschreibung.
+Shows all available commands with short description.
 
-**Beispiel:**
+**Example:**
 ```
 $help
 ```
 
-**Erwartete Ausgabe:** Embed mit allen Commands und deren Beschreibungen
+**Expected Output:** Embed with all commands and their descriptions
 
-**Test:** Führe `$help` aus und überprüfe, ob alle Commands aufgelistet sind
+**Test:** Run `$help` and verify that all commands are listed
 
 ---
 
 #### $help <command>
-Zeigt detaillierte Hilfe zu einem spezifischen Command.
+Shows detailed help for a specific command.
 
-**Beispiele:**
+**Examples:**
 ```
 $help server
 $help mod
@@ -696,45 +696,45 @@ $help config
 $help mods
 ```
 
-**Erwartete Ausgabe:** 
-- Verwendungsbeispiele
-- Dokumentation
-- Liste der Subcommands (falls vorhanden)
+**Expected Output:** 
+- Usage examples
+- Documentation
+- List of subcommands (if any)
 
 **Test:**
-1. Hilfe für server: `$help server`
-2. Überprüfe, ob alle Subcommands aufgelistet sind
+1. Help for server: `$help server`
+2. Check if all subcommands are listed
 
 ---
 
 #### $help <command> <subcommand>
-Zeigt detaillierte Hilfe zu einem Subcommand.
+Shows detailed help for a subcommand.
 
-**Beispiele:**
+**Examples:**
 ```
 $help server update
 $help mod add
 $help config set
 ```
 
-**Erwartete Ausgabe:** Detaillierte Dokumentation des spezifischen Subcommands
+**Expected Output:** Detailed documentation of the specific subcommand
 
-**Test:** Führe `$help mod add` aus und überprüfe die Dokumentation
+**Test:** Run `$help mod add` and check the documentation
 
 ---
 
-## Testplan - Vollständiger Command-Test
+## Test Plan - Complete Command Testing
 
-Hier ist eine empfohlene Reihenfolge zum Testen aller Commands:
+Here is a recommended order for testing all commands:
 
-### 1. Basis-Tests (Utility Commands)
+### 1. Basic Tests (Utility Commands)
 ```
 $help
 $version
 $mods
 ```
 
-### 2. Server-Management
+### 2. Server Management
 ```
 $server
 $server stop
@@ -743,13 +743,13 @@ $server start
 $server
 ```
 
-### 3. Server-Info (Server muss laufen)
+### 3. Server Info (Server must be running)
 ```
 $info
 $online
 ```
 
-### 4. Mod-Management
+### 4. Mod Management
 ```
 $mods all
 $mod add FNEI
@@ -761,7 +761,7 @@ $mod update FNEI
 $mod remove FNEI
 ```
 
-### 5. Config-Management
+### 5. Config Management
 ```
 $config get prefix
 $config set prefix !
@@ -772,19 +772,19 @@ $config get prefix
 $config save
 ```
 
-### 6. Spieler-Management (erfordert Test-Account)
+### 6. Player Management (requires test account)
 ```
-$kick TestUser Testgrund
-$ban TestUser Testgrund
+$kick TestUser Test reason
+$ban TestUser Test reason
 $unban TestUser
 ```
 
-### 7. Spiel-Funktionen
+### 7. Game Functions
 ```
 $save
 ```
 
-### 8. Erweiterte Tests
+### 8. Advanced Tests
 ```
 $help server
 $help mod add
@@ -794,34 +794,34 @@ $mod update
 
 ---
 
-## Fehlerbehebung
+## Troubleshooting
 
 ### "You are not an admin!"
-- Überprüfe, dass deine Discord-ID in `config.json` unter `admin_ids` eingetragen ist
-- Reload die Config mit `$config load` (falls kürzlich geändert)
+- Verify that your Discord ID is entered in `config.json` under `admin_ids`
+- Reload the config with `$config load` (if recently changed)
 
 ### "The server is not running"
-- Starte den Server mit `$server start`
-- Überprüfe Server-Logs in `error.log` und `factorio.log`
+- Start the server with `$server start`
+- Check server logs in `error.log` and `factorio.log`
 
 ### "The server did not register a game on the factorio server"
-- Server muss öffentlich sein und bei der Factorio-Lobby registriert
-- Überprüfe `launch_parameters` in `config.json`
-- Warte ~30 Sekunden nach dem Start
+- Server must be public and registered with the Factorio lobby
+- Check `launch_parameters` in `config.json`
+- Wait ~30 seconds after startup
 
 ### "Error reading mod list"
-- Überprüfe `mod_list_location` in `config.json`
-- Stelle sicher, dass der Pfad korrekt ist und die Datei existiert
+- Check `mod_list_location` in `config.json`
+- Ensure the path is correct and the file exists
 
 ### "No token to download mods" / "No username to download mods"
-- Setze `username` und `mod_portal_token` in `config.json`
-- Token erhältlich auf: https://factorio.com/profile
+- Set `username` and `mod_portal_token` in `config.json`
+- Token available at: https://factorio.com/profile
 
 ---
 
-## Factorio API-Kompatibilität
+## Factorio API Compatibility
 
-Die in `control.lua` verwendeten Factorio-Events sind kompatibel mit allen Factorio-Versionen ab 1.0:
+The Factorio events used in `control.lua` are compatible with all Factorio versions from 1.0:
 
 - ✅ `defines.events.on_player_joined_game`
 - ✅ `defines.events.on_player_left_game`
@@ -833,31 +833,31 @@ Die in `control.lua` verwendeten Factorio-Events sind kompatibel mit allen Facto
 - ✅ `defines.events.on_player_banned`
 - ✅ `defines.events.on_player_muted`
 
-Diese Events sind Teil der stabilen Factorio Lua API und werden in aktuellen Versionen (1.1.x, 2.0.x) vollständig unterstützt.
+These events are part of the stable Factorio Lua API and are fully supported in current versions (1.1.x, 2.0.x).
 
 ---
 
-## Zusätzliche Hinweise
+## Additional Notes
 
-### Befehlspräfix
-Der Standard-Prefix ist `$`, kann aber in `config.json` geändert werden:
+### Command Prefix
+The default prefix is `$`, but can be changed in `config.json`:
 ```json
 "prefix": "$"
 ```
 
-### Rollen-basierte Berechtigungen
-Bestimmte Commands können an Discord-Rollen gebunden werden in `config.json`:
+### Role-Based Permissions
+Certain commands can be bound to Discord roles in `config.json`:
 ```json
 "command_roles": {
     "mod": "role_id_here"
 }
 ```
 
-### Anpassbare Nachrichten
-Viele Bot-Nachrichten können in `config.json` unter `messages` angepasst werden.
+### Customizable Messages
+Many bot messages can be customized in `config.json` under `messages`.
 
 ---
 
 **FactoCord Version:** 3.0  
-**Zuletzt aktualisiert:** 16. Dezember 2024  
-**Dokumentation erstellt für:** Factorio 1.1.x / 2.0.x Kompatibilität
+**Last Updated:** December 16, 2024  
+**Documentation Created For:** Factorio 1.1.x / 2.0.x Compatibility

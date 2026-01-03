@@ -42,6 +42,7 @@ type factorioState struct {
 	stopping      bool
 	SaveRequested bool
 	GameID        string
+	paused        bool
 }
 
 var Factorio factorioState
@@ -69,6 +70,10 @@ func (f *factorioState) IsStopping() bool {
 	return f.stopping
 }
 
+func (f *factorioState) IsPaused() bool {
+	return f.paused
+}
+
 func (f *factorioState) Init(logger func(string)) {
 	logging, err := os.OpenFile("factorio.log", os.O_RDWR|os.O_CREATE|os.O_APPEND|os.O_TRUNC, 0666)
 	Critical(err, "... when attempting to open factorio.log")
@@ -85,13 +90,18 @@ func (f *factorioState) Init(logger func(string)) {
 
 func (f *factorioState) Start(s *discordgo.Session) {
 	if f.running {
-		SendOptional(s, "The server is already running")
+		if f.paused {
+			SendOptional(s, "The server is paused. Use resume to unpause it")
+		} else {
+			SendOptional(s, "The server is already running")
+		}
 		return
 	}
 	if s != nil {
 		SetTyping(s)
 	}
 	f.running = true
+	f.paused = false
 	f.Process = exec.Command(Config.Executable, Config.LaunchParameters...)
 	f.Process.Stderr = os.Stderr
 	f.Process.Stdout = *f.watcher
@@ -134,6 +144,41 @@ func (f *factorioState) Stop(s *discordgo.Session) {
 	f.running = false
 	f.stopping = false
 	f.SaveRequested = false
+	f.paused = false
+}
+
+func (f *factorioState) Pause(s *discordgo.Session) {
+	if !f.running {
+		SendOptional(s, "The server is not running to be paused")
+		return
+	}
+	if f.paused {
+		SendOptional(s, "The server is already **paused**")
+		return
+	}
+	if !f.Send("/pause") {
+		SendOptional(s, "Failed to send pause command to the server")
+		return
+	}
+	f.paused = true
+	SendOptional(s, "Factorio server has been **paused**")
+}
+
+func (f *factorioState) Resume(s *discordgo.Session) {
+	if !f.running {
+		SendOptional(s, "The server is not running to be resumed")
+		return
+	}
+	if !f.paused {
+		SendOptional(s, "The server is not paused")
+		return
+	}
+	if !f.Send("/unpause") {
+		SendOptional(s, "Failed to send resume command to the server")
+		return
+	}
+	f.paused = false
+	SendOptional(s, "Factorio server has been **resumed**")
 }
 
 func FactorioVersion() (string, error) {

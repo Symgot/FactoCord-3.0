@@ -37,6 +37,10 @@ type configT struct {
 	PlayerWatcherSourceChannelID string `json:"player_watcher_source_channel_id"`
 	PlayerWatcherTargetChannelID string `json:"player_watcher_target_channel_id"`
 
+	// DM Chat: Enable direct message communication with admins
+	EnableDMChat         bool   `json:"enable_dm_chat"`
+	VerificationDataPath string `json:"verification_data_path"`
+
 	AdminIDs     []string          `json:"admin_ids"`
 	CommandRoles map[string]string `json:"command_roles"`
 
@@ -52,6 +56,7 @@ type configT struct {
 		ServerStop        string `json:"server_stop"`
 		ServerFail        string `json:"server_fail"`
 		ServerSave        string `json:"server_save"`
+		ServerReady       string `json:"server_ready"`
 		PlayerJoin        string `json:"player_join"`
 		PlayerLeave       string `json:"player_leave"`
 		DownloadStart     string `json:"download_start"`
@@ -103,6 +108,8 @@ func (conf *configT) defaults() {
 	conf.Autolaunch = true
 	conf.GameName = "Factorio"
 	conf.Prefix = "$"
+	conf.EnableDMChat = true
+	conf.VerificationDataPath = "./verification.json"
 	// conf.HaveServerEssentials = false
 	// conf.IngameDiscordUserColors = false
 	conf.Messages.BotStartLaunch = "**:white_check_mark: Bot started! Launching server...**"
@@ -112,6 +119,7 @@ func (conf *configT) defaults() {
 	conf.Messages.ServerStop = "**:octagonal_sign: The server has stopped!**"
 	conf.Messages.ServerFail = "**:skull: The server has crashed!**"
 	conf.Messages.ServerSave = "**:floppy_disk: Game saved!**"
+	conf.Messages.ServerReady = "**:green_circle: Server is ready for players!**"
 	conf.Messages.PlayerJoin = "**:arrow_up: {username}**"
 	conf.Messages.PlayerLeave = "**:arrow_down: {username}s**"
 	conf.Messages.DownloadStart = ":arrow_down: Downloading {file}..."

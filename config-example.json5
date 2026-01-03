@@ -34,6 +34,12 @@
     player_watcher_source_channel_id: "",
     player_watcher_target_channel_id: "",
 
+    // DM Chat: Enable direct message communication with admins
+    // Allows admins to control the server and execute commands via Discord DMs
+    enable_dm_chat: true,
+    // Path to store verification data (links between Discord and Factorio accounts)
+    verification_data_path: "./verification.json",
+
     // IDs of the discord users that are allowed to execute any command
     admin_ids: [
         // "123456789",

@@ -10,6 +10,54 @@ function FactoCordIntegration.PrintToDiscord(msg)
 	localised_print({"", "0000-00-00 00:00:00 [DISCORD] ", msg})
 end
 
+-- Send a private message to a specific player (not visible in logs when used correctly)
+-- This uses player.print() which only shows to that specific player
+function FactoCordIntegration.WhisperToPlayer(player_name, message, color)
+	local p = game.get_player(player_name)
+	if p and p.connected then
+		local print_color = color or {r=0.5, g=0.8, b=1.0} -- Light blue default
+		p.print(message, {color=print_color})
+		return true
+	end
+	return false
+end
+
+-- Send verification code to player (private, not logged)
+-- This should be called via /silent-command to avoid logging
+function FactoCordIntegration.SendVerificationCode(player_name, code)
+	local p = game.get_player(player_name)
+	if p and p.connected then
+		-- Using player.print() ensures only this player sees the message
+		p.print("[FactoCord Verification]", {color={r=0.2,g=0.9,b=0.2}})
+		p.print("Your verification code: " .. code, {color={r=1,g=1,b=0}})
+		p.print("Enter this code in Discord DM to verify your account.", {color={r=0.7,g=0.7,b=0.7}})
+		return true
+	end
+	return false
+end
+
+-- Execute a command silently as a specific player
+-- This uses game.players[x].print for responses and avoids global prints
+function FactoCordIntegration.SilentExecute(player_name, lua_code)
+	local p = game.get_player(player_name)
+	if not p then
+		return false, "Player not found"
+	end
+	
+	-- Execute the Lua code in a protected call
+	local func, err = load(lua_code)
+	if not func then
+		return false, "Syntax error: " .. tostring(err)
+	end
+	
+	local success, result = pcall(func)
+	if not success then
+		return false, "Execution error: " .. tostring(result)
+	end
+	
+	return true, result
+end
+
 script.on_event(defines.events.on_player_joined_game, function(event)
 	local p = game.players[event.player_index];
 	FactoCordIntegration.PrintToDiscord("**" .. p.name .. "** joined.");

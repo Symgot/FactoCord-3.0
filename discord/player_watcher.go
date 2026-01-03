@@ -98,7 +98,7 @@ func ProcessServerInGame() {
 	if support.Config.PlayerWatcherTargetChannelID == "" {
 		return
 	}
-	support.SendTo(Session, "**Server Status:**\nServer ist jetzt im Spiel und bereit für Spieler!", support.Config.PlayerWatcherTargetChannelID)
+	support.SendTo(Session, support.Config.Messages.ServerReady, support.Config.PlayerWatcherTargetChannelID)
 }
 
 // HandlePlayerWatcherMessage processes messages from the source channel (legacy, kept for compatibility)
