@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"time"
 
 	"github.com/maxsupermanhd/FactoCord-3.0/v3/discord"
@@ -92,7 +91,6 @@ func console() {
 	}
 }
 
-func getFactorioPath() string {
 // ensureDirectoriesExist erstellt alle benötigten Verzeichnisse und Dateien automatisch
 func ensureDirectoriesExist() {
 	directories := []string{
