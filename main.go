@@ -38,7 +38,7 @@ func main() {
 	support.Factorio.Init(discord.ProcessFactorioLogLine)
 
 	// Factorio-Pfad ermitteln für Mod-Manager
-	factorioPath := getFactorioPath()
+	factorioPath := support.ResolveFactorioPath()
 
 	// Mod-Settings Manager initialisieren (optional)
 	factoriomod.InitModManager(factorioPath, "")
@@ -93,56 +93,6 @@ func console() {
 }
 
 func getFactorioPath() string {
-	// Versuche den Pfad aus der Executable zu extrahieren
-	exec := support.Config.Executable
-	if exec != "" {
-		// Extrahiere das Basisverzeichnis aus dem Executable-Pfad
-		// z.B. "../bin/x64/factorio" -> ".." oder "./factorio/bin/x64/factorio" -> "./factorio"
-		dir := filepath.Dir(exec) // bin/x64
-		dir = filepath.Dir(dir)   // bin
-		dir = filepath.Dir(dir)   // [base]
-
-		// Falls der Pfad relativ ist, mache ihn absolut
-		if absPath, err := filepath.Abs(dir); err == nil {
-			if _, statErr := os.Stat(absPath); statErr == nil {
-				fmt.Printf("Factorio-Pfad aus Executable ermittelt: %s\n", absPath)
-				return absPath
-			}
-		}
-
-		// Falls das nicht funktioniert, nutze ModListLocation
-		if support.Config.ModListLocation != "" {
-			modsDir := filepath.Dir(support.Config.ModListLocation)
-			baseDir := filepath.Dir(modsDir)
-			if absPath, err := filepath.Abs(baseDir); err == nil {
-				if _, statErr := os.Stat(absPath); statErr == nil {
-					fmt.Printf("Factorio-Pfad aus ModListLocation ermittelt: %s\n", absPath)
-					return absPath
-				}
-			}
-		}
-	}
-
-	// Standard-Pfade prüfen
-	paths := []string{
-		"./factorio",
-		"..",
-		"/opt/factorio",
-		"C:\\Program Files\\Factorio",
-	}
-
-	for _, p := range paths {
-		absPath, _ := filepath.Abs(p)
-		modsPath := filepath.Join(absPath, "mods")
-		if _, err := os.Stat(modsPath); err == nil {
-			fmt.Printf("Factorio-Pfad gefunden: %s\n", absPath)
-			return absPath
-		}
-	}
-
-	return "."
-}
-
 // ensureDirectoriesExist erstellt alle benötigten Verzeichnisse und Dateien automatisch
 func ensureDirectoriesExist() {
 	directories := []string{

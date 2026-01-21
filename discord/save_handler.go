@@ -32,7 +32,7 @@ func handleSaveConfirmation(s *discordgo.Session, i *discordgo.InteractionCreate
 
 	// Wende Änderungen an
 	writer := factoriomod.NewSettingsWriter(
-		support.Config.Executable, // Factorio-Pfad aus Config
+		support.ResolveFactorioPath(),
 		"./backups",
 	)
 
@@ -162,7 +162,7 @@ func formatChangesList(changes map[string]interface{}) string {
 // SaveSettingsDirectly speichert Settings ohne Benutzerinteraktion
 func SaveSettingsDirectly(modName string, changes map[string]interface{}) error {
 	writer := factoriomod.NewSettingsWriter(
-		support.Config.Executable,
+		support.ResolveFactorioPath(),
 		"./backups",
 	)
 

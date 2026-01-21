@@ -70,6 +70,20 @@ func loadGhostModeData() {
 	}
 }
 
+// Hilfsfunktion zum Formatieren von Dauer
+func formatDuration_ghost(d time.Duration) string {
+	hours := int(d.Hours())
+	minutes := int(d.Minutes()) % 60
+	seconds := int(d.Seconds()) % 60
+
+	if hours > 0 {
+		return fmt.Sprintf("%dh %dm", hours, minutes)
+	} else if minutes > 0 {
+		return fmt.Sprintf("%dm %ds", minutes, seconds)
+	}
+	return fmt.Sprintf("%ds", seconds)
+}
+
 // saveGhostModeData saves ghost mode data to file
 func saveGhostModeData() {
 	ghostModeMutex.RLock()
@@ -137,7 +151,8 @@ func SetPlayerHidden(factorioUsername string, hidden bool) {
 	}
 }
 
-// ActivateGhostMode activates full ghost mode for a user
+// ActivateGhostMode - VERBESSERTE VERSION
+// Aktiviert den Ghost-Mode für einen Spieler mit besserer Implementierung
 func ActivateGhostMode(discordUserID string, factorioUsername string, preLogin bool) {
 	ghostModeMutex.Lock()
 
@@ -156,6 +171,7 @@ func ActivateGhostMode(discordUserID string, factorioUsername string, preLogin b
 		// Will activate on next login
 		config.PreLogin = true
 		config.Enabled = false
+		ghostModeMutex.Unlock()
 	} else {
 		// Activate immediately
 		config.Enabled = true
@@ -163,25 +179,37 @@ func ActivateGhostMode(discordUserID string, factorioUsername string, preLogin b
 		config.RealJoinTime = time.Now()
 		config.FakeJoinTime = time.Now()
 
-		// Hide the player
+		ghostModeMutex.Unlock()
+
+		// 1. Entferne Spieler aus sichtbarer Liste
+		ActivePlayers.Lock()
+		delete(ActivePlayers.players, factorioUsername)
+		ActivePlayers.Unlock()
+
+		// 2. Markiere Spieler als versteckt
 		SetPlayerHidden(factorioUsername, true)
 
-		// Activate full spy mode (ALL logs suppressed)
+		// 3. Aktiviere full spy mode (ALLE Logs supprimiert)
 		AddSuppressedLog(discordUserID, "ALL")
+
+		// 4. Sende Fake-Logout sofort
+		SendPlayerWatcherLeave(factorioUsername, "")
+
+		// 5. Sende Lua-Befehl zu Factorio um Spieler zu verstecken
+		if support.Factorio.IsRunning() {
+			// Versuche den Spieler in den Zuschauer-Modus zu setzen
+			luaCode := fmt.Sprintf(
+				`/silent-command if game.players[%q] then game.players[%q].spectator = true; game.players[%q].character = nil end`,
+				factorioUsername, factorioUsername, factorioUsername)
+			support.Factorio.Send(luaCode)
+		}
 	}
 
-	ghostModeMutex.Unlock()
 	saveGhostModeData()
-
-	// Send Lua command to set ghost mode in Factorio
-	if support.Factorio.IsRunning() && !preLogin {
-		luaCode := fmt.Sprintf(`if not storage.factocord_ghost_mode then storage.factocord_ghost_mode = {} end; storage.factocord_ghost_mode["%s"] = true`,
-			escapeFactorioString(factorioUsername))
-		support.Factorio.Send("/silent-command " + luaCode)
-	}
 }
 
-// DeactivateGhostMode deactivates ghost mode and restores previous settings
+// DeactivateGhostMode - VERBESSERTE VERSION
+// Deaktiviert Ghost-Mode mit Wiederherstellung
 func DeactivateGhostMode(discordUserID string, factorioUsername string) (wasActive bool, fakePlayTime string) {
 	ghostModeMutex.Lock()
 
@@ -196,7 +224,7 @@ func DeactivateGhostMode(discordUserID string, factorioUsername string) (wasActi
 
 	if config.Enabled {
 		// Calculate fake play time (from fake join time)
-		fakePlayTime = formatDuration(time.Since(config.FakeJoinTime))
+		fakePlayTime = formatDuration_ghost(time.Since(config.FakeJoinTime))
 	}
 
 	// Restore previous spy mode settings
@@ -205,7 +233,7 @@ func DeactivateGhostMode(discordUserID string, factorioUsername string) (wasActi
 		AddSuppressedLog(discordUserID, logType)
 	}
 
-	// Show the player again
+	// Markiere Spieler als nicht mehr versteckt
 	SetPlayerHidden(factorioUsername, false)
 
 	config.Enabled = false
@@ -214,18 +242,27 @@ func DeactivateGhostMode(discordUserID string, factorioUsername string) (wasActi
 	ghostModeMutex.Unlock()
 	saveGhostModeData()
 
-	// Send Lua command to remove ghost mode in Factorio
+	// 1. Sende Lua-Befehl um den Spectator-Modus zu beenden
 	if support.Factorio.IsRunning() {
-		luaCode := fmt.Sprintf(`if storage.factocord_ghost_mode then storage.factocord_ghost_mode["%s"] = nil end`,
-			escapeFactorioString(factorioUsername))
-		support.Factorio.Send("/silent-command " + luaCode)
+		luaCode := fmt.Sprintf(
+			`/silent-command if game.players[%q] then game.players[%q].spectator = false end`,
+			factorioUsername, factorioUsername)
+		support.Factorio.Send(luaCode)
 	}
+
+	// 2. Sende Fake-Login Message
+	SendPlayerWatcherJoin(factorioUsername)
+
+	// 3. Füge Spieler wieder zur sichtbaren Liste hinzu
+	ActivePlayers.Lock()
+	ActivePlayers.players[factorioUsername] = &PlayerInfo{JoinTime: time.Now()}
+	ActivePlayers.Unlock()
 
 	return wasActive, fakePlayTime
 }
 
-// OnPlayerLogin handles ghost mode activation when a player logs in
-// Returns true if the login should be hidden
+// OnPlayerLogin - VERBESSERTE VERSION
+// Handles ghost mode activation when a player logs in
 func OnPlayerLogin(factorioUsername string) bool {
 	// Check if any user has pre-login ghost mode for this Factorio username
 	discordUserID, exists := GetDiscordUserID(factorioUsername)
@@ -234,10 +271,9 @@ func OnPlayerLogin(factorioUsername string) bool {
 	}
 
 	ghostModeMutex.Lock()
-	defer ghostModeMutex.Unlock()
-
 	config, exists := ghostModeData.Users[discordUserID]
 	if !exists || !config.PreLogin {
+		ghostModeMutex.Unlock()
 		return false
 	}
 
@@ -246,8 +282,9 @@ func OnPlayerLogin(factorioUsername string) bool {
 	config.PreLogin = false
 	config.RealJoinTime = time.Now()
 	config.FakeJoinTime = time.Now()
+	ghostModeMutex.Unlock()
 
-	// Hide the player
+	// Mark as hidden
 	SetPlayerHidden(factorioUsername, true)
 
 	// Activate full spy mode
@@ -255,11 +292,12 @@ func OnPlayerLogin(factorioUsername string) bool {
 
 	saveGhostModeData()
 
-	// Send Lua command
+	// Send Lua command to set spectator mode
 	if support.Factorio.IsRunning() {
-		luaCode := fmt.Sprintf(`if not storage.factocord_ghost_mode then storage.factocord_ghost_mode = {} end; storage.factocord_ghost_mode["%s"] = true`,
-			escapeFactorioString(factorioUsername))
-		support.Factorio.Send("/silent-command " + luaCode)
+		luaCode := fmt.Sprintf(
+			`/silent-command if game.players[%q] then game.players[%q].spectator = true; game.players[%q].character = nil end`,
+			factorioUsername, factorioUsername, factorioUsername)
+		support.Factorio.Send(luaCode)
 	}
 
 	return true // Hide the login
@@ -279,7 +317,6 @@ func GetAutoSilentCommands(discordUserID string) []string {
 // AddAutoSilentCommand adds a command to auto-silence list
 func AddAutoSilentCommand(discordUserID string, command string) {
 	ghostModeMutex.Lock()
-	defer ghostModeMutex.Unlock()
 
 	config, exists := ghostModeData.Users[discordUserID]
 	if !exists {
@@ -292,21 +329,23 @@ func AddAutoSilentCommand(discordUserID string, command string) {
 	// Check if already exists
 	for _, cmd := range config.AutoSilentCommands {
 		if cmd == command {
+			ghostModeMutex.Unlock()
 			return
 		}
 	}
 
 	config.AutoSilentCommands = append(config.AutoSilentCommands, command)
+	ghostModeMutex.Unlock()
 	saveGhostModeData()
 }
 
 // RemoveAutoSilentCommand removes a command from auto-silence list
 func RemoveAutoSilentCommand(discordUserID string, command string) bool {
 	ghostModeMutex.Lock()
-	defer ghostModeMutex.Unlock()
 
 	config, exists := ghostModeData.Users[discordUserID]
 	if !exists {
+		ghostModeMutex.Unlock()
 		return false
 	}
 
@@ -321,6 +360,7 @@ func RemoveAutoSilentCommand(discordUserID string, command string) bool {
 	}
 
 	config.AutoSilentCommands = newList
+	ghostModeMutex.Unlock()
 	saveGhostModeData()
 	return removed
 }
@@ -328,12 +368,14 @@ func RemoveAutoSilentCommand(discordUserID string, command string) bool {
 // ClearAutoSilentCommands clears all auto-silent commands for a user
 func ClearAutoSilentCommands(discordUserID string) {
 	ghostModeMutex.Lock()
-	defer ghostModeMutex.Unlock()
 
 	if config, exists := ghostModeData.Users[discordUserID]; exists {
 		config.AutoSilentCommands = []string{}
+		ghostModeMutex.Unlock()
 		saveGhostModeData()
+		return
 	}
+	ghostModeMutex.Unlock()
 }
 
 // IsAutoSilentCommand checks if a command should be auto-silenced
@@ -348,7 +390,11 @@ func IsAutoSilentCommand(discordUserID string, command string) bool {
 
 	// Normalize command
 	command = strings.TrimPrefix(command, "/")
-	commandBase := strings.Fields(command)[0]
+	fields := strings.Fields(command)
+	if len(fields) == 0 {
+		return false
+	}
+	commandBase := fields[0]
 
 	for _, cmd := range config.AutoSilentCommands {
 		cmd = strings.TrimPrefix(cmd, "/")
@@ -449,7 +495,7 @@ func handleGhostCommand(s *discordgo.Session, m *discordgo.MessageCreate, args s
 		info := ActivePlayers.players[factorioUsername]
 		playTime := ""
 		if info != nil {
-			playTime = formatDuration(time.Since(info.JoinTime))
+			playTime = formatDuration_ghost(time.Since(info.JoinTime))
 		}
 		ActivePlayers.RUnlock()
 
@@ -473,13 +519,15 @@ func handleGhostCommand(s *discordgo.Session, m *discordgo.MessageCreate, args s
 	case "off":
 		wasActive, fakePlayTime := DeactivateGhostMode(m.Author.ID, factorioUsername)
 		if !wasActive {
-			// Check if pre-login was set
-			ghostModeMutex.RLock()
+			// Check if pre-login was set and cancel it safely
+			ghostModeMutex.Lock()
 			config := ghostModeData.Users[m.Author.ID]
-			ghostModeMutex.RUnlock()
-
-			if config != nil && config.PreLogin {
+			wasPreLogin := config != nil && config.PreLogin
+			if wasPreLogin {
 				config.PreLogin = false
+			}
+			ghostModeMutex.Unlock()
+			if wasPreLogin {
 				saveGhostModeData()
 				sendDMToChannel(s, m.ChannelID, "✅ Pre-login ghost mode cancelled.")
 				return

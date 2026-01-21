@@ -78,7 +78,13 @@ var Commands = [...]Command{
 		Doc:     &admin.ModCommandDoc,
 		Desc:    "Manage mod-list.json",
 	},
-
+	{
+		Name:    "settings",
+		Command: utils.HandleSettingsCommand,
+		Admin:   alwaysAdmin, // oder eigene Permission-Logik
+		Doc:     &utils.SettingsDoc,
+		Desc:    "Interaktiver Server-Settings-Manager",
+	},
 	// Util Commands
 	{
 		Name:    "mods",

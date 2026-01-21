@@ -107,17 +107,18 @@ func modsFiles() string {
 func ModsList(s *discordgo.Session, args string) {
 	returnEnabled := true
 	returnDisabled := false
-	if args == "on" || args == "" {
+	switch args {
+	case "", "on":
 		returnEnabled = true
-	} else if args == "off" {
+	case "off":
 		returnEnabled = false
 		returnDisabled = true
-	} else if args == "all" {
+	case "all":
 		returnDisabled = true
-	} else if args == "files" {
+	case "files":
 		support.Send(s, modsFiles())
 		return
-	} else {
+	default:
 		support.SendFormat(s, "Usage: "+ModListDoc.Usage)
 		return
 	}
@@ -136,5 +137,4 @@ func ModsList(s *discordgo.Session, args string) {
 		return
 	}
 	support.ChunkedMessageSend(s, modList(ModList, returnEnabled, returnDisabled))
-	return
 }

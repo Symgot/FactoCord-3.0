@@ -1,9 +1,12 @@
 package discord
 
 import (
+	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/maxsupermanhd/FactoCord-3.0/v3/commands"
 	"github.com/maxsupermanhd/FactoCord-3.0/v3/factoriomod"
 	"github.com/maxsupermanhd/FactoCord-3.0/v3/support"
 )
@@ -26,30 +29,212 @@ func HandleModSettingsMessage(s *discordgo.Session, m *discordgo.MessageCreate) 
 		return false // Lasse andere Handler übernehmen
 	}
 
-	content := strings.ToLower(strings.TrimSpace(m.Content))
-	prefix := strings.ToLower(strings.TrimSpace(support.Config.Prefix))
+	raw := strings.TrimSpace(m.Content)
+	prefix := strings.TrimSpace(support.Config.Prefix)
 
 	// Entferne Prefix falls vorhanden (case-insensitive)
-	if strings.HasPrefix(content, prefix) {
-		content = strings.TrimSpace(strings.TrimPrefix(content, prefix))
+	if prefix != "" {
+		rawLower := strings.ToLower(raw)
+		prefixLower := strings.ToLower(prefix)
+		if strings.HasPrefix(rawLower, prefixLower) && len(raw) >= len(prefix) {
+			raw = strings.TrimSpace(raw[len(prefix):])
+		}
 	}
 
+	// Legacy: "!" Commands in DMs
+	if strings.HasPrefix(raw, "!") {
+		raw = strings.TrimSpace(strings.TrimPrefix(raw, "!"))
+	}
+
+	contentLower := strings.ToLower(strings.TrimSpace(raw))
+
 	switch {
-	case content == "mods" || content == "!mods":
+	case contentLower == "mods":
 		handleModListRequest(s, m)
 		return true
-	case content == "cancel" || content == "!cancel":
+	case contentLower == "cancel":
 		handleCancelRequest(s, m)
 		return true
-	case content == "save" || content == "!save":
+	case contentLower == "save":
 		handleSaveRequest(s, m)
 		return true
-	case content == "modshelp" || content == "!modshelp":
+	case contentLower == "modshelp" || contentLower == "help" || contentLower == "?":
 		handleModsHelpRequest(s, m)
 		return true
 	}
 
+	// Erweiterte DM-Commands: "server ...", "backups ...", "mods reload"
+	parts := strings.Fields(raw)
+	if len(parts) == 0 {
+		return false
+	}
+
+	switch strings.ToLower(parts[0]) {
+	case "server":
+		handleServerDMCommand(s, m, parts[1:])
+		return true
+	case "backup", "backups":
+		handleBackupsDMCommand(s, m, parts[1:])
+		return true
+	case "mods":
+		// z.B. "mods reload"
+		if len(parts) >= 2 && strings.ToLower(parts[1]) == "reload" {
+			handleModsReloadRequest(s, m)
+			return true
+		}
+	}
+
 	return false
+}
+
+func handleModsReloadRequest(s *discordgo.Session, m *discordgo.MessageCreate) {
+	if factoriomod.GlobalModManager == nil {
+		s.ChannelMessageSend(m.ChannelID, "❌ Mod-Manager ist nicht initialisiert.")
+		return
+	}
+	if err := factoriomod.GlobalModManager.DiscoverMods(); err != nil {
+		s.ChannelMessageSend(m.ChannelID, "❌ Fehler beim Neuladen der Mods: "+err.Error())
+		return
+	}
+	s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("✅ Mods neu geladen (%d).", factoriomod.GlobalModManager.GetModCount()))
+}
+
+func handleServerDMCommand(s *discordgo.Session, m *discordgo.MessageCreate, args []string) {
+	if factoriomod.GlobalServerController == nil {
+		s.ChannelMessageSend(m.ChannelID, "❌ ServerController ist nicht initialisiert.")
+		return
+	}
+
+	if len(args) == 0 {
+		s.ChannelMessageSend(m.ChannelID,
+			"ℹ️ Nutzung:\n"+
+				"- `"+support.Config.Prefix+"server status`\n"+
+				"- `"+support.Config.Prefix+"server save` (Admin)\n"+
+				"- `"+support.Config.Prefix+"server restart` (Admin)\n"+
+				"- `"+support.Config.Prefix+"server stop` (Admin)\n"+
+				"- `"+support.Config.Prefix+"server start` (Admin)")
+		return
+	}
+
+	action := strings.ToLower(args[0])
+	isAdmin := commands.CheckAdmin(m.Author.ID)
+
+	switch action {
+	case "status":
+		status := factoriomod.GlobalServerController.GetServerStatus()
+		s.ChannelMessageSend(m.ChannelID, "📡 Server-Status: **"+status+"**")
+
+	case "save":
+		if !isAdmin {
+			s.ChannelMessageSend(m.ChannelID, "❌ Du musst Admin sein, um den Server zu speichern.")
+			return
+		}
+		if err := factoriomod.GlobalServerController.SaveGame(); err != nil {
+			s.ChannelMessageSend(m.ChannelID, "❌ Save fehlgeschlagen: "+err.Error())
+			return
+		}
+		s.ChannelMessageSend(m.ChannelID, "✅ Save wurde ausgelöst.")
+
+	case "restart":
+		if !isAdmin {
+			s.ChannelMessageSend(m.ChannelID, "❌ Du musst Admin sein, um den Server neu zu starten.")
+			return
+		}
+		s.ChannelMessageSend(m.ChannelID, "🔄 Restart wird ausgeführt...")
+		go func() {
+			if err := factoriomod.GlobalServerController.RestartServer(); err != nil {
+				s.ChannelMessageSend(m.ChannelID, "❌ Restart fehlgeschlagen: "+err.Error())
+				return
+			}
+			s.ChannelMessageSend(m.ChannelID, "✅ Server neu gestartet.")
+		}()
+
+	case "stop":
+		if !isAdmin {
+			s.ChannelMessageSend(m.ChannelID, "❌ Du musst Admin sein, um den Server zu stoppen.")
+			return
+		}
+		if err := factoriomod.GlobalServerController.StopServer(); err != nil {
+			s.ChannelMessageSend(m.ChannelID, "❌ Stop fehlgeschlagen: "+err.Error())
+			return
+		}
+		s.ChannelMessageSend(m.ChannelID, "✅ Server gestoppt.")
+
+	case "start":
+		if !isAdmin {
+			s.ChannelMessageSend(m.ChannelID, "❌ Du musst Admin sein, um den Server zu starten.")
+			return
+		}
+		if err := factoriomod.GlobalServerController.StartServer(); err != nil {
+			s.ChannelMessageSend(m.ChannelID, "❌ Start fehlgeschlagen: "+err.Error())
+			return
+		}
+		s.ChannelMessageSend(m.ChannelID, "✅ Server gestartet.")
+
+	default:
+		s.ChannelMessageSend(m.ChannelID, "❌ Unbekannter server-Befehl. Nutze `"+support.Config.Prefix+"server` für Hilfe.")
+	}
+}
+
+func handleBackupsDMCommand(s *discordgo.Session, m *discordgo.MessageCreate, args []string) {
+	writer := factoriomod.NewSettingsWriter(
+		support.ResolveFactorioPath(),
+		"./backups",
+	)
+
+	if len(args) == 0 || strings.ToLower(args[0]) == "list" {
+		backups, err := writer.ListBackups()
+		if err != nil {
+			s.ChannelMessageSend(m.ChannelID, "❌ Fehler beim Laden der Backups: "+err.Error())
+			return
+		}
+		if len(backups) == 0 {
+			s.ChannelMessageSend(m.ChannelID, "ℹ️ Keine Backups gefunden.")
+			return
+		}
+
+		sort.Strings(backups)
+		if len(backups) > 25 {
+			backups = backups[len(backups)-25:]
+		}
+
+		var b strings.Builder
+		b.WriteString("💾 Verfügbare Backups (neueste oben):\n")
+		for i := len(backups) - 1; i >= 0; i-- {
+			b.WriteString("- " + backups[i] + "\n")
+		}
+		b.WriteString("\nNutzung: `" + support.Config.Prefix + "backups restore <filename>` (Admin)")
+		s.ChannelMessageSend(m.ChannelID, b.String())
+		return
+	}
+
+	action := strings.ToLower(args[0])
+	if action != "restore" {
+		s.ChannelMessageSend(m.ChannelID, "❌ Unbekannter backups-Befehl. Nutze `"+support.Config.Prefix+"backups list`.")
+		return
+	}
+
+	if !commands.CheckAdmin(m.Author.ID) {
+		s.ChannelMessageSend(m.ChannelID, "❌ Du musst Admin sein, um ein Backup wiederherzustellen.")
+		return
+	}
+	if len(args) < 2 {
+		s.ChannelMessageSend(m.ChannelID, "❌ Nutzung: `"+support.Config.Prefix+"backups restore <filename>`")
+		return
+	}
+
+	backupFile := args[1]
+	if err := writer.RestoreBackup(backupFile); err != nil {
+		s.ChannelMessageSend(m.ChannelID, "❌ Restore fehlgeschlagen: "+err.Error())
+		return
+	}
+
+	s.ChannelMessageSend(m.ChannelID, "✅ Backup wiederhergestellt: `"+backupFile+"`\n🔄 Server wird neu gestartet...")
+	if factoriomod.GlobalServerController != nil {
+		go func() {
+			_ = factoriomod.GlobalServerController.RestartServer()
+		}()
+	}
 }
 
 // handleModListRequest zeigt die verfügbaren Mods an
