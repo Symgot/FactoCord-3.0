@@ -86,11 +86,11 @@
         unpacking: ":pinching_hand: Unpacking {file}...",
         unpacking_complete: ":ok_hand: Server updated to {version}",
         // Player Watcher messages
-        player_watcher_join: "**Join:**\n{username} hat sich eingeloggt auf dem Server",
-        player_watcher_leave: "**Leave:**\n{username} hat sich ausgeloggt aus dem Server",
-        player_watcher_leave_time: "**Leave:**\n{username} hat sich ausgeloggt aus dem Server (Spielzeit: {playtime})",
-        player_list_header: "**Aktive Spieler:** {count}",
-        player_list_entry: "- {username}: online seit {playtime}",
-        player_list_empty: "Es sind derzeit keine Spieler online.",
+        player_watcher_join: "**Join:**\n{username} has logged into the server",
+        player_watcher_leave: "**Leave:**\n{username} has logged out of the server",
+        player_watcher_leave_time: "**Leave:**\n{username} has logged out of the server (Playtime: {playtime})",
+        player_list_header: "**Active Players:** {count}",
+        player_list_entry: "- {username}: online for {playtime}",
+        player_list_empty: "There are currently no players online.",
     }
 }
